@@ -1,19 +1,54 @@
-CMakeLists.txt.user
+# .gitignore - repository
+# Standard ignores for CMake build artifacts and temporary files
+
+# --- CMake ---
+# CMake generated directories and cache
+CMakeFiles/
 CMakeCache.txt
-CMakeFiles
-CMakeScripts
-Testing
-Makefile
 cmake_install.cmake
 install_manifest.txt
-compile_commands.json
 CTestTestfile.cmake
-_deps
-CMakeUserPresets.json
+Testing/
+compile_commands.json
 
-# CLion
-#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#  and can be added to the global gitignore or merged into this file.  For a more nuclear
-#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-#cmake-build-*
+# CMake user files
+CMakeLists.txt.user
+*.cmake.user
+[Bb]uild
+_deps
+# CPM ignore
+cmake/CPM.cmake
+
+# Dot files
+*.dot
+*.dot.*
+
+# NOTE: "build/" handling is left to you. Uncomment any of the lines below to ignore that build folder pattern.
+# Uncomment to ignore top-level or pattern-based build directories created during out-of-source builds.
+# build/
+# build-*/
+# cmake-build-*/
+# Build/
+# _build/
+
+# Makefile and build system outputs
+Makefile
+cmake_install.cmake
+
+# Common object/library/executable artifacts
+*.obj
+*.o
+*.lo
+*.la
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Editor/IDE folders frequently seen in CMake projects
+.vscode/
+.idea/
+
+# End of CMake section
