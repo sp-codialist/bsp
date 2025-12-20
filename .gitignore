@@ -2,6 +2,7 @@
 # Standard ignores for CMake build artifacts and temporary files
 
 # --- CMake ---
+CMakeUserPresets.json
 # CMake generated directories and cache
 CMakeFiles/
 CMakeCache.txt
@@ -52,3 +53,7 @@ cmake_install.cmake
 .idea/
 
 # End of CMake section
+# macOS Finder metadata files
+*/.DS_Store
+# Windows image file cache
+Thumbs.db

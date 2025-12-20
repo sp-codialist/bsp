@@ -1,0 +1,23 @@
+{
+    "version": 10,
+    "cmakeMinimumRequired": {
+        "major": 4,
+        "minor": 0,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "hidden": true,
+            "name": "versions",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "GITHUB_BRANCH_cpm": "v0.42.0",
+                "GITHUB_BRANCH_cpm_SHA256": "2020b4fc42dba44817983e06342e682ecfc3d2f484a581f11cc5731fbe4dce8a",
+                "GITHUB_BRANCH_toolchain": "v1.0.7.4",
+                "GITHUB_BRANCH_toolchain_SHA256": "24a21f46f1e4ec7349fb3b127854035ddfb64d5cb65c2310aa2e621fe31f0a10",
+                "STM32CubeF4_VERSION": "v1.0.10.3",
+                "STM32CubeF4_CHECKSUM": "913aedf229e5d00ef3e2da358cdda32c46de0124f1fa8fb275bd05797efc64e5"
+            }
+        }
+    ]
+}
