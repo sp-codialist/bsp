@@ -8,4 +8,3 @@ CPMAddPackage (
     GIT_SHALLOW TRUE
     GIT_PROGRESS TRUE
 )
-

@@ -1,13 +1,13 @@
 {
-    "version": 10,
-    "cmakeMinimumRequired": {
-        "major": 4,
-        "minor": 0,
-        "patch": 0
-    },
-    "include": [
-        "CMakePresets/HiddenPresets.json",
-        "CMakePresets/VersionPresets.json",
-        "CMakePresets/BspStaticLibPreset.json"
-    ]
+  "cmakeMinimumRequired": {
+    "major": 4,
+    "minor": 0,
+    "patch": 0
+  },
+  "include": [
+    "CMakePresets/HiddenPresets.json",
+    "CMakePresets/VersionPresets.json",
+    "CMakePresets/BspStaticLibPreset.json"
+  ],
+  "version": 10
 }
