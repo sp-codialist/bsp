@@ -78,6 +78,20 @@
             "cacheVariables": {
                 "FIRMWARE_NAME": "CPU_BL"
             }
+        },
+        {
+            "name": "cpb-hal",
+            "hidden":  true,
+            "description": "Base preset for CPB static lib builds",
+            "cacheVariables": {
+                "BOARD_TYPE": "cpb",
+                "BOARD_VERSION": "v02"
+            }
+        },
+        {
+            "name" : "bsp",
+            "hidden":  true,
+            "description": "Base preset for CPB BSP static lib builds"
         }
     ]
 }

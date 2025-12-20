@@ -10,47 +10,40 @@
     ],
     "configurePresets": [
         {
-            "name": "board-cpb",
-            "hidden":  true,
-            "description": "Base preset for CPB static lib builds",
-            "cacheVariables": {
-                "BOARD_TYPE": "cpb",
-                "BOARD_VERSION": "v02"
-            }
-        },
-        {
             "inherits":[
                 "debug",
                 "mcu",
                 "gnuarm14.3",
-                "board-cpb"
+                "cpb-hal",
+                "bsp"
             ],
-            "name": "cpb-hal-gnuarm14.3",
+            "name": "bsp-gnuarm14.3",
             "hidden": false,
-            "displayName": "cpb hal static lib with arm gcc 14.3 docker",
-            "description": "cpb hal static lib with arm gcc 14.3 docker"
+            "displayName": "bsp static with arm gcc 14.3 docker",
+            "description": "bsp static lib with arm gcc 14.3 docker"
         },
         {
             "inherits":[
                 "debug",
                 "mcu",
                 "atfe21.1",
-                "board-cpb"
+                "bsp",
+                "cpb-hal"
             ],
-            "name": "cpb-hal-atfe21.1",
+            "name": "bsp-atfe21.1",
             "hidden": false,
-            "displayName": "cpb hal static lib with ATfE 21.1 docker",
-            "description": "cpb hal static lib with ATfE 21.1 docker"
+            "displayName": "bsp hal static lib with ATfE 21.1 docker",
+            "description": "bsp hal static lib with ATfE 21.1 docker"
         }
     ],
     "buildPresets": [
         {
-            "name": "cpb-hal-gnuarm14.3",
-            "configurePreset": "cpb-hal-gnuarm14.3"
+            "name": "bsp-gnuarm14.3",
+            "configurePreset": "bsp-gnuarm14.3"
         },
         {
-            "name": "cpb-hal-atfe21.1",
-            "configurePreset": "cpb-hal-atfe21.1"
+            "name": "bsp-atfe21.1",
+            "configurePreset": "bsp-atfe21.1"
         }
     ]
 }
