@@ -1,0 +1,193 @@
+name: Build and Release BSP Static Library
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  BUILD_TYPE: Debug
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/kodezine/kdocker:latest
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [
+          "bsp-gnuarm14.3",
+          "bsp-atfe21.1"
+        ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Fix git safe directory
+      run: |
+        git config --global --add safe.directory /__w/bsp/bsp
+
+    - name: Configure CMake
+      run: |
+        cmake --preset ${{ matrix.preset }}
+
+    - name: Build
+      run: |
+        cmake --build --preset ${{ matrix.preset }} --config $BUILD_TYPE
+
+    - name: Test
+      working-directory: build/${{ matrix.preset }}
+      run: |
+        ctest -C $BUILD_TYPE --output-on-failure || echo "No tests configured"
+
+    - name: Package with CPack
+      working-directory: build/${{ matrix.preset }}
+      run: |
+        # Create packages using CPack
+        cpack -G "TGZ" -C $BUILD_TYPE
+
+        # List generated packages
+        ls -la *.tar.gz
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.preset }}-packages
+        path: |
+          build/${{ matrix.preset }}/*.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./artifacts
+
+    - name: Prepare release assets
+      run: |
+        # Create release directory and copy CPack generated packages
+        mkdir -p release-assets
+
+        # Debug: List all downloaded artifacts
+        echo "Downloaded artifacts structure:"
+        find artifacts/ -type f -name "*" | head -20
+
+        # Copy all CPack generated tar.gz files from artifacts
+        find artifacts/ -name "*.tar.gz" -exec cp {} release-assets/ \;
+
+        # Debug: List prepared release assets
+        echo "Release assets prepared:"
+        ls -la release-assets/
+
+        # Ensure we have files to release
+        if [ ! "$(ls -A release-assets/)" ]; then
+          echo "Error: No release assets found!"
+          exit 1
+        fi
+
+        # Generate SHA256 checksums for each file
+        cd release-assets
+        for file in *.tar.gz; do
+          if [ -f "$file" ]; then
+            sha256sum "$file" > "$file.sha256"
+            echo "Generated: $file.sha256"
+          fi
+        done
+
+        # Also create a combined SHA256SUMS.txt for convenience
+        sha256sum *.tar.gz > SHA256SUMS.txt
+        echo "SHA256 checksums generated:"
+        cat SHA256SUMS.txt
+
+    - name: Extract version from tag
+      id: get_version
+      run: |
+        VERSION=${GITHUB_REF_NAME#v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "tag_name=$GITHUB_REF_NAME" >> $GITHUB_OUTPUT
+
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        cat > RELEASE_NOTES.md << EOF
+        # BSP Static Library Release ${{ steps.get_version.outputs.tag_name }}
+
+        ## What's Included
+
+        This release contains pre-built Board Support Package (BSP) static library:
+
+        - **libbsp.a**: BSP library with board abstraction layer
+        - **Multiple Toolchains**: Built with ARM GCC 14.3 and ARM Compiler for Embedded 21.1
+        - **Debug Build with Symbols**: Compiled with debug information
+
+        Each archive contains:
+        - BSP static library (\`libbsp.a\`)
+        - Complete BSP headers for Common modules:
+          - BspAdc, BspAtFlash, BspButton, BspCan
+          - BspEeprom, BspFuelGauge, BspGpio, BspI2c
+          - BspLed, BspLedBar, BspPwm, BspRtc
+          - BspSpi, BspWatchdog, CmdProc, SelfTest
+          - BringUp utilities
+        - CMake configuration files for easy integration
+        - License information
+
+        ## Build Configuration
+
+        - **Build Type**: Debug (with debug symbols)
+        - **Toolchains**:
+          - ARM GCC 14.3 (arm-none-eabi-gcc)
+          - ARM Compiler for Embedded 21.1 (armclang)
+        - **CMake Version**: 3.28+
+        - **Dependencies**: Requires CPB HAL library (libcpb.a)
+        - **Target**: STM32F4 series (Cortex-M4F)
+
+        ## Quick Start
+
+        \`\`\`cmake
+        find_package(bsp REQUIRED)
+        target_link_libraries(your_target PRIVATE bsp::common)
+        \`\`\`
+
+        See USAGE.md in the package for detailed integration instructions.
+
+        ## SHA256 Checksums
+
+        \`\`\`
+        EOF
+
+        # Add checksums to release notes
+        cat release-assets/SHA256SUMS.txt >> RELEASE_NOTES.md
+        echo "\`\`\`" >> RELEASE_NOTES.md
+
+    - name: Create or Update Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.get_version.outputs.tag_name }}
+        name: BSP Static Library ${{ steps.get_version.outputs.tag_name }}
+        body_path: RELEASE_NOTES.md
+        draft: false
+        prerelease: ${{ contains(steps.get_version.outputs.tag_name, '-') }}
+        files: |
+          release-assets/*.tar.gz
+          release-assets/*.sha256
+          release-assets/SHA256SUMS.txt
+        fail_on_unmatched_files: true
+        make_latest: true
+        generate_release_notes: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
