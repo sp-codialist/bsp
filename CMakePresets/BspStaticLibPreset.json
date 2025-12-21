@@ -1,23 +1,18 @@
 {
-  "buildPresets": [
-    {
-      "configurePreset": "bsp-gnuarm14.3",
-      "name": "bsp-gnuarm14.3"
-    },
-    {
-      "configurePreset": "bsp-atfe21.1",
-      "name": "bsp-atfe21.1"
-    }
-  ],
+  "version": 10,
   "cmakeMinimumRequired": {
     "major": 4,
     "minor": 0,
     "patch": 0
   },
+  "include": [
+    "HiddenPresets.json"
+  ],
   "configurePresets": [
     {
-      "description": "bsp static lib with arm gcc 14.3 docker",
+      "name": "bsp-gnuarm14.3",
       "displayName": "bsp static with arm gcc 14.3 docker",
+      "description": "bsp static lib with arm gcc 14.3 docker",
       "hidden": false,
       "inherits": [
         "debug",
@@ -25,12 +20,12 @@
         "gnuarm14.3",
         "cpb-hal",
         "bsp"
-      ],
-      "name": "bsp-gnuarm14.3"
+      ]
     },
     {
-      "description": "bsp hal static lib with ATfE 21.1 docker",
+      "name": "bsp-atfe21.1",
       "displayName": "bsp hal static lib with ATfE 21.1 docker",
+      "description": "bsp hal static lib with ATfE 21.1 docker",
       "hidden": false,
       "inherits": [
         "debug",
@@ -38,12 +33,17 @@
         "atfe21.1",
         "bsp",
         "cpb-hal"
-      ],
-      "name": "bsp-atfe21.1"
+      ]
     }
   ],
-  "include": [
-    "HiddenPresets.json"
-  ],
-  "version": 10
+  "buildPresets": [
+    {
+      "name": "bsp-gnuarm14.3",
+      "configurePreset": "bsp-gnuarm14.3"
+    },
+    {
+      "name": "bsp-atfe21.1",
+      "configurePreset": "bsp-atfe21.1"
+    }
+  ]
 }
