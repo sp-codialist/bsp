@@ -13,7 +13,9 @@
         "GITHUB_BRANCH_toolchain": "v1.0.7.4",
         "GITHUB_BRANCH_toolchain_SHA256": "24a21f46f1e4ec7349fb3b127854035ddfb64d5cb65c2310aa2e621fe31f0a10",
         "STM32CubeF4_CHECKSUM": "56cb7775d4defeae5f377e2c63c4ba76691dd98d2bf83598a6dc1a4af3d3337b",
-        "STM32CubeF4_VERSION": "v1.0.10.4"
+        "STM32CubeF4_VERSION": "v1.0.10.4",
+        "UNITY_VERSION": "v2.6.0",
+        "CMOCK_VERSION": "v2.5.4"
       },
       "hidden": true,
       "name": "versions"

@@ -4,6 +4,7 @@
  *  Created on: Jun 20, 2024
  *      Author: IlicAleksander
  */
+#pragma once
 
 #ifdef __cplusplus
 extern "C"

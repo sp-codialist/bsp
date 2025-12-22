@@ -4,8 +4,13 @@ CPMAddPackage (
   NAME cpu_precompiled_hal
   URL "https://github.com/sp-codialist/stm32cubef4/releases/download/${STM32CubeF4_VERSION}/cpb-hal-1.28.3-gnuarm14.3.tar.gz"
   URL_HASH SHA256=${STM32CubeF4_CHECKSUM}
+  OPTIONS
+    DOWNLOAD_ONLY ${ENABLE_TESTING}
 )
 
 if (cpu_precompiled_hal_ADDED)
   message (STATUS "CPU precompiled HAL package added")
+  if (DEFINED ENABLE_TESTING)
+    include (cmake/unity.hal.cmake)
+  endif ()
 endif ()

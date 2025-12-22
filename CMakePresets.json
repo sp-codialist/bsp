@@ -7,7 +7,8 @@
   "include": [
     "CMakePresets/HiddenPresets.json",
     "CMakePresets/VersionPresets.json",
-    "CMakePresets/BspStaticLibPreset.json"
+    "CMakePresets/BspStaticLibPreset.json",
+    "CMakePresets/UnitTestPreset.json"
   ],
   "version": 10
 }
