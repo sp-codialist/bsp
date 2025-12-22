@@ -8,9 +8,9 @@
 #ifndef BSP_LED_H_
 #define BSP_LED_H_
 
-#include <stdint.h>
-#include <stdbool.h>
 #include "cpu_specific.h"
+#include <stdbool.h>
+#include <stdint.h>
 
 #define LED_ON          0xFFFFu
 #define LED_OFF         0u
@@ -30,7 +30,7 @@ bool LedInit(void);
  * @param pHandle The assigned LED handle.
  * @return true on success
  */
-bool LedRegister(GpioPort_e ePin, LedHandle_t *pHandle);
+bool LedRegister(GpioPort_e ePin, LedHandle_t* pHandle);
 
 /**
  * Starts Timer for blinking LEDs. When the timer is started, LEDs will start blinking if

@@ -10,8 +10,8 @@ extern "C"
 {
 #endif
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef enum bsp_gpio_port_e
 {
