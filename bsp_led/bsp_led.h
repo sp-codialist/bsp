@@ -9,29 +9,42 @@ extern "C"
 {
 #endif
 
-#include "bsp_gpio.h"
 #include <stdbool.h>
 #include <stdint.h>
 
-#define LED_ON          0xFFFFu
-#define LED_OFF         0u
-#define LED_INVL_HANDLE 0xFFu
+#include "bsp_gpio.h"
+#include "bsp_swtimer.h"
+#define LED_DBLINK_TOGGLE_CNT       3u
+#define LED_UPDATE_PERIOD_50MS      20u
+#define LED_TIMER_PERIOD_MS         50u
+#define LED_ONE_BLINK_HALF_PRD_50MS 4u
+#define LED_ONE_BLINK_TOGGLE_CNT    2u
 
-typedef uint8_t LedHandle_t;
-
+/**
+ * Structure representing a single LED and its runtime state.
+ */
+typedef struct
+{
+    GpioPort_e    ePin;                     /**< GPIO pin associated with the LED */
+    bool          bState;                   /**< Current output state */
+    uint16_t      wUpdPeriod;               /**< Main blink period (in timer ticks) */
+    uint16_t      wUpdPeriodDoubleBlink;    /**< Double-blink interval (in timer ticks) */
+    uint16_t      wCnt;                     /**< Counter for main blink period */
+    bool          bDoubleBlink;             /**< Double-blink active flag */
+    uint16_t      wDoubleBlinkCnt;          /**< Counter for double-blink */
+    uint8_t       byDoubleBlinkToggleCnt;   /**< Toggle count for double-blink */
+    uint16_t      wUpdPeriodNew;            /**< New main period (pending update) */
+    uint16_t      wUpdPeriodDoubleBlinkNew; /**< New double-blink period (pending update) */
+    volatile bool bUpdatePending;           /**< Flag indicating a pending period update */
+    volatile bool bOneBlink;                /**< One-blink active flag */
+    uint16_t      wOneBlinkCnt;             /**< Counter for one-blink */
+    uint8_t       byOneBlinkToggleCnt;      /**< Toggle count for one-blink */
+} LiveLed_t;
 /**
  * Initializes Alive LED control module.
  * @return true on success
  */
-bool LedInit(void);
-
-/**
- * Registers LED.
- * @param ePin pin enum.
- * @param pHandle The assigned LED handle.
- * @return true on success
- */
-bool LedRegister(GpioPort_e ePin, LedHandle_t* pHandle);
+bool LedInit(LiveLed_t* const pLed);
 
 /**
  * Starts Timer for blinking LEDs. When the timer is started, LEDs will start blinking if
@@ -49,7 +62,7 @@ void LedStart(void);
  * parameter sets for how long LED will be ON during the two short blinks. wDoubleBlinkIntervalMs should
  * be <= wHalfPrdMs / 4
  */
-void LedSetPeriode(LedHandle_t hLed, uint16_t wHalfPrdMs, uint16_t wDoubleBlinkIntervalMs);
+void LedSetPeriod(LiveLed_t* const pLed, uint16_t wHalfPrdMs, uint16_t wDoubleBlinkIntervalMs);
 
 /**
  * Blinks LED once, with fixed, pre-defined period. If called
@@ -60,7 +73,7 @@ void LedSetPeriode(LedHandle_t hLed, uint16_t wHalfPrdMs, uint16_t wDoubleBlinkI
  *
  * @param hLed handle of LED that should blink.
  */
-void LedBlink(LedHandle_t hLed);
+void LedBlink(LiveLed_t* const pLed);
 
 #ifdef __cplusplus
 }

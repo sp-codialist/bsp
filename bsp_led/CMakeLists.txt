@@ -13,4 +13,6 @@ target_include_directories (${libName} PUBLIC
 )
 target_link_libraries (${libName} PRIVATE
     ${CPB_LIBRARIES}
+    bsp_gpio
+    bsp_swtimer
 )
