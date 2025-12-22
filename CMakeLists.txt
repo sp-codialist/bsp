@@ -29,3 +29,4 @@ endif()
 
 include (cmake/deps.hal.cmake)
 add_subdirectory (bsp_gpio)
+add_subdirectory (bsp_led)

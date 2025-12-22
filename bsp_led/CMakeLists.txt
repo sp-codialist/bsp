@@ -1,6 +1,6 @@
-#  bsp cmake file for gpio
+#  bsp cmake file for led
 cmake_minimum_required(VERSION 3.13)
-set (libName bsp_gpio)
+set (libName bsp_led)
 project(${libName} C)
 
 add_library (${libName} STATIC
