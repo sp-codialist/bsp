@@ -1,0 +1,68 @@
+{
+  "cmakeMinimumRequired": {
+    "major": 4,
+    "minor": 0,
+    "patch": 0
+  },
+  "version": 10,
+  "configurePresets": [
+    {
+      "name": "gnuarm14.3-local",
+      "hidden": true,
+      "description": "Local ARM GCC 14.3 compiler",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/_deps/cmake_scripts-src/toolchains/arm_none_eabi_gcc.cmake"
+      },
+      "environment": {
+        "COMPILER_ROOT_PATH": "/Users/sohal/gnuarm14.3"
+      },
+      "generator": "Ninja"
+    },
+    {
+      "name": "atfe20.1-local",
+      "hidden": true,
+      "description": "Local ATFE 20.1.0 compiler",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/_deps/cmake_scripts-src/toolchains/llvm_clang_arm.cmake"
+      },
+      "environment": {
+        "COMPILER_ROOT_PATH": "/Users/sohal/atfe_20.1.0"
+      },
+      "generator": "Ninja"
+    },
+    {
+      "name": "bsp-user-gnuarm14.3",
+      "description": "BSP static lib with local ARM GCC 14.3",
+      "displayName": "BSP Static Library (Local ARM GCC 14.3)",
+      "inherits": [
+        "debug",
+        "mcu",
+        "gnuarm14.3-local",
+        "cpb-hal",
+        "bsp"
+      ]
+    },
+    {
+      "name": "bsp-user-atfe20.1",
+      "description": "BSP static lib with local ATFE 20.1.0",
+      "displayName": "BSP Static Library (Local ATFE 20.1.0)",
+      "inherits": [
+        "debug",
+        "mcu",
+        "atfe20.1-local",
+        "cpb-hal",
+        "bsp"
+      ]
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "bsp-user-gnuarm14.3",
+      "configurePreset": "bsp-user-gnuarm14.3"
+    },
+    {
+      "name": "bsp-user-atfe20.1",
+      "configurePreset": "bsp-user-atfe20.1"
+    }
+  ]
+}
