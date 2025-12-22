@@ -4,11 +4,12 @@
  *  Created on: May 12, 2025
  *      Author: IlicAleksander
  */
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
-#ifndef BSP_LED_H_
-#define BSP_LED_H_
-
-#include "cpu_specific.h"
+#include "bsp_gpio.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -61,4 +62,6 @@ void LedSetPeriode(LedHandle_t hLed, uint16_t wHalfPrdMs, uint16_t wDoubleBlinkI
  */
 void LedBlink(LedHandle_t hLed);
 
-#endif /* BSP_LED_H_ */
+#ifdef __cplusplus
+}
+#endif

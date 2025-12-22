@@ -6,9 +6,9 @@
  */
 
 #include "bsp_led.h"
-#include "bsp_gpio.h"
-#include "cpu_specific.h"
 #include "timer.h"
+
+#include "stm32f4xx_hal_conf.h"
 
 #define LED_CNT                     4u
 #define LED_DBLINK_TOGGLE_CNT       3u

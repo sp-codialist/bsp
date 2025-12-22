@@ -5,7 +5,7 @@
  *      Author: IlicAleksander
  */
 #include "bsp_gpio.h"
-#include "stm32f4xx_hal_conf.h"
+#include "stm32f4xx_hal.h"
 #include "stm32f4xx_ll_gpio.h"
 
 const uint32_t BSP_GPIO_MASK_15_10 = 0xFC00U;
