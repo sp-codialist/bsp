@@ -28,3 +28,4 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 include (cmake/deps.hal.cmake)
+add_subdirectory (bsp_gpio)

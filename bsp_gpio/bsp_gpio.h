@@ -5,21 +5,35 @@
  *      Author: IlicAleksander
  */
 
-#ifndef BSPCMN_BSP_GPIO_H_
-#define BSPCMN_BSP_GPIO_H_
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
+#include <stdint.h>
 #include <stdbool.h>
 
-#include "cpu_specific.h"
-#include "mx_config.h"
+typedef enum bsp_gpio_port_e
+{
+    eBSP_GPIO_PORT_A_0 = 0u,
+    eBSP_GPIO_PORT_A_1,
+    eBSP_GPIO_PORT_A_2,
+    eBSP_GPIO_PORT_A_3,
+    eBSP_GPIO_PORT_A_4,
+    eBSP_GPIO_PORT_A_5,
+    eBSP_GPIO_PORT_A_6,
+    eBSP_GPIO_PORT_A_7,
+    eBSP_GPIO_PORT_B_0,
+    eBSP_GPIO_PORT_B_1,
+    eBSP_GPIO_PORT_B_2,
+    eBSP_GPIO_PORT_B_3,
+    eBSP_GPIO_PORT_B_4,
+    eBSP_GPIO_PORT_B_5,
+    eBSP_GPIO_PORT_B_6,
+    eBSP_GPIO_PORT_B_7
+} GpioPort_e;
 
-#define BSP_GPIO_9_5_CB_CNT   5u
-#define BSP_GPIO_15_10_CB_CNT 6u
-#define BSP_GPIO_4_0_CB_CNT   5u
-#define BSP_GPIO_MASK_15_10   0xFC00u
-#define BSP_GPIO_MASK_9_5     0x03F0u
-
-typedef enum
+typedef enum bsp_gpio_irq_ch_e
 {
     eBSP_GPIO_IRQ_CH_0 = 0u,
     eBSP_GPIO_IRQ_CH_1,
@@ -30,14 +44,20 @@ typedef enum
     eBSP_GPIO_IRQ_CH_15_10
 } BspGpioIRQChEnum;
 
-typedef enum
+typedef enum bsp_gpio_port_pin_cfg_e
 {
     eGPIO_CFG_OD_OUT,
     eGPIO_CFG_PP_OUT,
     eGPIO_CFG_INPUT
 } GpioPortPinCfg;
 
-typedef GPIO_PinState GpioPinState_t;
+typedef enum pin_state_e
+{
+    ePIN_STATE_LOW = 0u,
+    ePIN_STATE_HIGH
+} GpioPinState_t;
+
+typedef void (*GpioIrqCb_t)(void);
 
 /**
  * Get Low level handle for pin. Low level handles
@@ -101,4 +121,6 @@ void BspGpioSetIRQHandler(GpioPort_e ePin, GpioIrqCb_t pCb);
  */
 void BspGpioEnableIRQ(GpioPort_e ePin);
 
-#endif /* BSPCMN_BSP_GPIO_H_ */
+#ifdef __cplusplus
+}
+#endif
