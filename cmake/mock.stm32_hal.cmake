@@ -43,6 +43,16 @@ foreach(element IN LISTS ${libName}_HEADERS)
     # Extract filename
     get_filename_component(fileName ${element} NAME)
 
+    # Patch stm32f4xx_hal_gpio.h to remove duplicate GPIO_PinState definition
+    if(fileName STREQUAL "stm32f4xx_hal_gpio.h")
+        file(READ ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} FILE_CONTENTS)
+        # Remove the GPIO_PinState typedef that conflicts with hal_def.h
+        string(REGEX REPLACE "typedef enum[\r\n\t ]*\\{[\r\n\t ]*GPIO_PIN_RESET[\r\n\t ]*=[\r\n\t ]*0[\r\n\t ]*,[\r\n\t ]*GPIO_PIN_SET[\r\n\t ]*\\}[\r\n\t ]*GPIO_PinState[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        # Also remove the comment block for GPIO Bit SET and Bit RESET enumeration if it exists
+        string(REGEX REPLACE "/\\*\\*[\r\n\t ]*\\*[\r\n\t ]*@brief[ \t]+GPIO Bit SET and Bit RESET enumeration[^\n]*\n[^\n]*\\*/" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} "${FILE_CONTENTS}")
+    endif()
+
     # Generate mock
     message(STATUS "Creating mock for ${fileName}...")
     execute_process(

@@ -46,12 +46,14 @@ typedef struct
     volatile uint32_t AFR[2];
 } GPIO_TypeDef;
 
-// GPIO Pin state
+// GPIO Pin state (only define if not already defined in hal_gpio.h)
+#ifndef GPIO_PIN_RESET
 typedef enum
 {
     GPIO_PIN_RESET = 0,
     GPIO_PIN_SET
 } GPIO_PinState;
+#endif
 
 /* Exported types ------------------------------------------------------------*/
 

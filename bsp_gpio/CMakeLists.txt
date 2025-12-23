@@ -14,3 +14,14 @@ target_include_directories (${libName} PUBLIC
 target_link_libraries (${libName} PRIVATE
     ${CPB_LIBRARIES}
 )
+target_compile_options (${libName} PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Werror
+    $<$<BOOL:${BUILD_TESTING}>:--coverage -fprofile-arcs -ftest-coverage>
+)
+
+target_link_options(${libName} PRIVATE
+    $<$<BOOL:${BUILD_TESTING}>:--coverage>
+)
