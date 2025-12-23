@@ -120,6 +120,29 @@ Provides high-level LED control with advanced blinking patterns:
    LedBlink(hLed);  // Blink once
    ```
 
+## Unit Testing
+
+The BSP library includes comprehensive unit tests using Unity and CMock frameworks. Tests are built to run on the host machine for rapid development and CI/CD integration.
+
+![Unit Test Architecture](docs/bsp-test-host.svg)
+
+### Running Unit Tests
+
+1. **Configure the unit test build:**
+   ```bash
+   cmake --preset bsp-test-host
+   ```
+
+2. **Build the tests:**
+   ```bash
+   cmake --build build/bsp-test-host
+   ```
+
+3. **Run the tests:**
+   ```bash
+   ctest --preset bsp-test-host
+   ```
+
 ## Dependencies
 
 ### External Dependencies (Auto-fetched by CPM)

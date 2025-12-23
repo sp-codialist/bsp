@@ -14,8 +14,10 @@
         "GITHUB_BRANCH_toolchain_SHA256": "24a21f46f1e4ec7349fb3b127854035ddfb64d5cb65c2310aa2e621fe31f0a10",
         "STM32CubeF4_CHECKSUM": "56cb7775d4defeae5f377e2c63c4ba76691dd98d2bf83598a6dc1a4af3d3337b",
         "STM32CubeF4_VERSION": "v1.0.10.4",
-        "UNITY_VERSION": "v2.6.0",
-        "CMOCK_VERSION": "v2.5.4"
+        "GITHUB_BRANCH_unity": "2.6.0",
+        "GITHUB_BRANCH_unity_sha": "aa4c9fb1ae5fc5242f914c65f3557e817e40cb37f04a31e5ff76d1ab89dbf674",
+        "GITHUB_BRANCH_cmock": "2.5.3",
+        "GITHUB_BRANCH_cmock_sha": "d30724405b527f2b1d2894b27a1600af3ccb4aad12e63e48ba4f0ea8ae88fe9c"
       },
       "hidden": true,
       "name": "versions"

@@ -18,8 +18,8 @@
  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __STM32G4xx_HAL_DEF
-#define __STM32G4xx_HAL_DEF
+#ifndef __STM32F4xx_HAL_DEF
+#define __STM32F4xx_HAL_DEF
 
 #ifdef __cplusplus
 extern "C"
@@ -27,9 +27,31 @@ extern "C"
 #endif
 
 /* Includes ------------------------------------------------------------------*/
-#include "Legacy/stm32_hal_legacy.h" /* Aliases file for old names compatibility */
-#include "stm32g4xx.h"
+#include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
+
+/* Stub definitions for host compilation -------------------------------------*/
+// GPIO peripheral structure stub
+typedef struct
+{
+    volatile uint32_t MODER;
+    volatile uint32_t OTYPER;
+    volatile uint32_t OSPEEDR;
+    volatile uint32_t PUPDR;
+    volatile uint32_t IDR;
+    volatile uint32_t ODR;
+    volatile uint32_t BSRR;
+    volatile uint32_t LCKR;
+    volatile uint32_t AFR[2];
+} GPIO_TypeDef;
+
+// GPIO Pin state
+typedef enum
+{
+    GPIO_PIN_RESET = 0,
+    GPIO_PIN_SET
+} GPIO_PinState;
 
 /* Exported types ------------------------------------------------------------*/
 
@@ -210,4 +232,4 @@ typedef enum
 }
 #endif
 
-#endif /* ___STM32G4xx_HAL_DEF */
+#endif /* __STM32F4xx_HAL_DEF */

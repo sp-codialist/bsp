@@ -28,6 +28,16 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 include (cmake/deps.hal.cmake)
+
+
 add_subdirectory (bsp_gpio)
 add_subdirectory (bsp_swtimer)
 add_subdirectory (bsp_led)
+
+# Include Unity/CMock when testing is enabled
+if(ENABLE_TESTING)
+    include(cmake/deps.unity.cmake)
+    include(cmake/deps.cmock.cmake)
+    enable_testing()
+    add_subdirectory (tests)
+endif()
