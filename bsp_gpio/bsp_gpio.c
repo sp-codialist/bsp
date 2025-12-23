@@ -4,223 +4,168 @@
  *  Created on: Jun 20, 2024
  *      Author: IlicAleksander
  */
+#include <stddef.h>
+
 #include "bsp_gpio.h"
-#include "stm32f4xx_hal.h"
+
+#include "gpio_struct.h"
 #include "stm32f4xx_ll_gpio.h"
 
-const uint32_t BSP_GPIO_MASK_15_10 = 0xFC00U;
-const uint32_t BSP_GPIO_MASK_9_5   = 0x03F0u;
+/** static bsp pins that relate to each gpio in the ioc hal layer */
+static GpioIrqCb_t  s_aBspGpioPins[eGPIO_COUNT] = {NULL};
+extern const gpio_t gpio_pins[eGPIO_COUNT];
 
-/** private structure */
-typedef struct port_pin_s
+/** static functions */
+static uint32_t getGpioIndexFromPin(uint16_t GPIO_Pin);
+
+void BspGpioWritePin(uint32_t const ePin, bool const bSet)
 {
-    GPIO_TypeDef* pPort;
-    uint32_t      uPin;
-    GpioIrqCb_t   pCb;
-} PortPin_t;
-
-static void            sBspGpioCallIrq(const PortPin_t* pPinHandle);
-static void            sHandleIRQs(uint32_t uMask, uint32_t uRegisteredIRQCbsCnt, PortPin_t* const aRegisteredIRQCbs[]);
-static void            sRegisterIRQCb(PortPin_t* pPinHandle);
-static void            sEnableIRQ(const PortPin_t* pPinHandle);
-static inline uint32_t sBspGpioGetLLPinHandle(uint32_t uInPin);
-static PortPin_t*      PortGetHandle(GpioPort_e ePin);
-
-uint32_t BspGpioGetLLHandle(GpioPort_e ePin)
-{
-    uint32_t         uRet       = 0u;
-    const PortPin_t* pPinHandle = PortGetHandle(ePin);
-    if (pPinHandle != NULL)
+    do
     {
-        uRet = sBspGpioGetLLPinHandle(pPinHandle->uPin);
-    }
-    return uRet;
-}
-
-void BspGpioCfgPin(GpioPort_e ePin, uint32_t uLLPinHandle, GpioPortPinCfg eCfg)
-{
-    if (uLLPinHandle != 0u)
-    {
-        const PortPin_t* pPinHandle = PortGetHandle(ePin);
-        if (pPinHandle != NULL)
+        if (ePin >= eGPIO_COUNT)
         {
-            if (eCfg == eGPIO_CFG_OD_OUT)
-            {
-                LL_GPIO_SetPinMode(pPinHandle->pPort, uLLPinHandle, LL_GPIO_MODE_OUTPUT);
-                LL_GPIO_SetPinOutputType(pPinHandle->pPort, uLLPinHandle, LL_GPIO_OUTPUT_OPENDRAIN);
-            }
-            else if (eCfg == eGPIO_CFG_PP_OUT)
-            {
-                LL_GPIO_SetPinMode(pPinHandle->pPort, uLLPinHandle, LL_GPIO_MODE_OUTPUT);
-                LL_GPIO_SetPinOutputType(pPinHandle->pPort, uLLPinHandle, LL_GPIO_OUTPUT_PUSHPULL);
-            }
-            else if (eCfg == eGPIO_CFG_INPUT)
-            {
-                LL_GPIO_SetPinMode(pPinHandle->pPort, uLLPinHandle, LL_GPIO_MODE_INPUT);
-            }
-            else
-            {
-                // No action
-            }
+            return;
         }
-    }
-}
-
-void BspGpioWritePin(GpioPort_e ePin, bool bSet)
-{
-    const PortPin_t* pPinHandle = PortGetHandle(ePin);
-    if (pPinHandle != NULL)
-    {
+        if (gpio_pins[ePin].pPort == NULL)
+        {
+            return;
+        }
         if (bSet)
         {
             // lint -e{9034}
-            HAL_GPIO_WritePin(pPinHandle->pPort, (uint16_t)pPinHandle->uPin, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(gpio_pins[ePin].pPort, (uint16_t)gpio_pins[ePin].uPin, GPIO_PIN_SET);
         }
         else
         {
             // lint -e{9034}
-            HAL_GPIO_WritePin(pPinHandle->pPort, (uint16_t)pPinHandle->uPin, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(gpio_pins[ePin].pPort, (uint16_t)gpio_pins[ePin].uPin, GPIO_PIN_RESET);
         }
-    }
+    } while (false);
 }
 
-void BspGpioTogglePin(GpioPort_e ePin)
+void BspGpioTogglePin(uint32_t const ePin)
 {
-    const PortPin_t* pPinHandle = PortGetHandle(ePin);
-    if (pPinHandle != NULL)
+    do
     {
-        HAL_GPIO_TogglePin(pPinHandle->pPort, (uint16_t)pPinHandle->uPin);
-    }
-}
-bool BspGpioReadPin(GpioPort_e ePin)
-{
-    bool             bSet       = false;
-    const PortPin_t* pPinHandle = PortGetHandle(ePin);
-    if (pPinHandle != NULL)
-    {
-        GPIO_PinState tState;
-        tState = HAL_GPIO_ReadPin(pPinHandle->pPort, (uint16_t)pPinHandle->uPin);
-        bSet   = ((uint8_t)tState == (uint8_t)GPIO_PIN_SET);
-    }
-    return bSet;
-}
-
-void BspGpioSetIRQHandler(GpioPort_e ePin, GpioIrqCb_t pCb)
-{
-
-    PortPin_t* pPinHandle = PortGetHandle(ePin);
-    if (pPinHandle != NULL)
-    {
-        pPinHandle->pCb = pCb;
-        sRegisterIRQCb(pPinHandle);
-    }
-}
-
-void BspGpioEnableIRQ(GpioPort_e ePin)
-{
-    const PortPin_t* pPinHandle = PortGetHandle(ePin);
-    if (pPinHandle != NULL)
-    {
-        sEnableIRQ(pPinHandle);
-    }
-}
-void BspGpioIRQ(BspGpioIRQChEnum eIRQCh)
-{
-}
-
-static void sBspGpioCallIrq(const PortPin_t* pPinHandle)
-{
-    if ((pPinHandle != NULL) && (pPinHandle->pCb != NULL))
-    {
-        pPinHandle->pCb();
-    }
-}
-
-static void sRegisterIRQCb(PortPin_t* pPinHandle)
-{
-}
-
-static void sEnableIRQ(const PortPin_t* pPinHandle)
-{
-}
-
-static void sHandleIRQs(uint32_t uMask, uint32_t uRegisteredIRQCbsCnt, PortPin_t* const aRegisteredIRQCbs[])
-{
-    for (uint32_t i = 0; i < uRegisteredIRQCbsCnt; i++)
-    {
-        uint32_t uPin = aRegisteredIRQCbs[i]->uPin;
-        if ((uMask & uPin) != 0u)
+        if (ePin >= eGPIO_COUNT)
         {
-            const PortPin_t* pPinHandle = aRegisteredIRQCbs[i];
-            sBspGpioCallIrq(pPinHandle);
+            return;
+        }
+        if (gpio_pins[ePin].pPort == NULL)
+        {
+            return;
+        }
+        // lint -e{9034}
+        HAL_GPIO_TogglePin(gpio_pins[ePin].pPort, (uint16_t)gpio_pins[ePin].uPin);
+    } while (false);
+}
+bool BspGpioReadPin(uint32_t const ePin)
+{
+    bool pinState = false;
+    do
+    {
+        if (ePin >= eGPIO_COUNT)
+        {
+            return pinState;
+        }
+        if (gpio_pins[ePin].pPort == NULL)
+        {
+            return pinState;
+        }
+        // lint -e{9034}
+        pinState = (bool)HAL_GPIO_ReadPin(gpio_pins[ePin].pPort, (uint16_t)gpio_pins[ePin].uPin);
+    } while (false);
+    return pinState;
+}
+
+void BspGpioSetIRQHandler(uint32_t const ePin, GpioIrqCb_t const pCb)
+{
+    do
+    {
+        if (ePin >= eGPIO_COUNT)
+        {
+            return;
+        }
+        if (gpio_pins[ePin].pPort == NULL)
+        {
+            return;
+        }
+        s_aBspGpioPins[ePin] = pCb;
+    } while (false);
+}
+
+void BspGpioEnableIRQ(uint32_t const ePin)
+{
+    do
+    {
+        if (ePin >= eGPIO_COUNT)
+        {
+            return;
+        }
+        switch (gpio_pins[ePin].uPin)
+        {
+            case GPIO_PIN_0:
+                HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+                break;
+            case GPIO_PIN_1:
+                HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+                break;
+            case GPIO_PIN_2:
+                HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+                break;
+            case GPIO_PIN_3:
+                HAL_NVIC_EnableIRQ(EXTI3_IRQn);
+                break;
+            case GPIO_PIN_4:
+                HAL_NVIC_EnableIRQ(EXTI4_IRQn);
+                break;
+            case GPIO_PIN_5:
+            case GPIO_PIN_6:
+            case GPIO_PIN_7:
+            case GPIO_PIN_8:
+            case GPIO_PIN_9:
+                HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+                break;
+            case GPIO_PIN_10:
+            case GPIO_PIN_11:
+            case GPIO_PIN_12:
+            case GPIO_PIN_13:
+            case GPIO_PIN_14:
+            case GPIO_PIN_15:
+                HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+                break;
+            default:
+                // default case unreachable
+                break;
+        }
+    } while (false);
+}
+
+static uint32_t getGpioIndexFromPin(uint16_t GPIO_Pin)
+{
+    uint32_t retIndex = eGPIO_COUNT;
+    for (uint32_t i = 0; i < eGPIO_COUNT; i++)
+    {
+        if (gpio_pins[i].uPin == GPIO_Pin)
+        {
+            retIndex = i;
+            break;
         }
     }
+    return retIndex; // Invalid index
 }
 
-static inline uint32_t sBspGpioGetLLPinHandle(uint32_t uInPin)
+/*!
+ * @brief HAL GPIO EXTI Callback function
+ */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-    uint32_t uRet = 0u;
-    switch (uInPin)
+    uint32_t gpioIndex = getGpioIndexFromPin(GPIO_Pin);
+    if (gpioIndex < eGPIO_COUNT)
     {
-        case GPIO_PIN_0:
-            uRet = LL_GPIO_PIN_0;
-            break;
-        case GPIO_PIN_1:
-            uRet = LL_GPIO_PIN_1;
-            break;
-        case GPIO_PIN_2:
-            uRet = LL_GPIO_PIN_2;
-            break;
-        case GPIO_PIN_3:
-            uRet = LL_GPIO_PIN_3;
-            break;
-        case GPIO_PIN_4:
-            uRet = LL_GPIO_PIN_4;
-            break;
-        case GPIO_PIN_5:
-            uRet = LL_GPIO_PIN_5;
-            break;
-        case GPIO_PIN_6:
-            uRet = LL_GPIO_PIN_6;
-            break;
-        case GPIO_PIN_7:
-            uRet = LL_GPIO_PIN_7;
-            break;
-        case GPIO_PIN_8:
-            uRet = LL_GPIO_PIN_8;
-            break;
-        case GPIO_PIN_9:
-            uRet = LL_GPIO_PIN_9;
-            break;
-        case GPIO_PIN_10:
-            uRet = LL_GPIO_PIN_10;
-            break;
-        case GPIO_PIN_11:
-            uRet = LL_GPIO_PIN_11;
-            break;
-        case GPIO_PIN_12:
-            uRet = LL_GPIO_PIN_12;
-            break;
-        case GPIO_PIN_13:
-            uRet = LL_GPIO_PIN_13;
-            break;
-        case GPIO_PIN_14:
-            uRet = LL_GPIO_PIN_14;
-            break;
-        case GPIO_PIN_15:
-            uRet = LL_GPIO_PIN_15;
-            break;
-        default:
-            // uRet stays 0u
-            break;
+        if (s_aBspGpioPins[gpioIndex] != NULL)
+        {
+            s_aBspGpioPins[gpioIndex]();
+        }
     }
-    return uRet;
-}
-
-PortPin_t* PortGetHandle(GpioPort_e ePin)
-{
-    PortPin_t* pRet = NULL;
-    // if(ePin < eGPIO_CNT)
-
-    return pRet;
 }

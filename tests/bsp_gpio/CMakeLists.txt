@@ -15,11 +15,13 @@ include(${CMAKE_SOURCE_DIR}/cmake/mock.stm32_hal.cmake)
 # Test source files
 set(${targetName}_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test_bsp_gpio.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/gpio_structs/gpio_struct.c
 )
 
 # Test include directories
 set(${targetName}_INCLUDE_DIR
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/gpio_structs
 )
 
 # Generate Unity test runner
@@ -56,6 +58,13 @@ target_link_libraries(${targetName}
         ${DUTName}
         mock_stm32_hal
         unity
+)
+
+# Suppress warnings from production code that we cannot modify
+target_compile_options(${DUTName}
+    PRIVATE
+        -Wno-error=unused-parameter
+        -Wno-error=unused-function
 )
 
 # Compiler options for coverage and debugging
