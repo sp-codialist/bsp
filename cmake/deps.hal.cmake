@@ -7,10 +7,3 @@ CPMAddPackage (
   OPTIONS
     DOWNLOAD_ONLY ${ENABLE_TESTING}
 )
-
-if (cpu_precompiled_hal_ADDED)
-  message (STATUS "CPU precompiled HAL package added")
-  if (DEFINED ENABLE_TESTING)
-    include (cmake/unity.hal.cmake)
-  endif ()
-endif ()

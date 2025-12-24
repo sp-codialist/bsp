@@ -5,6 +5,7 @@ set(libName mock_stm32_hal)
 # HAL headers to mock
 set(${libName}_HEADERS
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_gpio.h
+    ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_cortex.h
 )
 
 # Additional HAL headers that need to be copied (dependencies)
@@ -31,8 +32,23 @@ foreach(dep_header IN LISTS ${libName}_DEPENDENCY_HEADERS)
 endforeach()
 
 # Copy host-compatible hal_def.h to override the STM32 version
-configure_file(${CMAKE_SOURCE_DIR}/cmake/host.hal_def.h
+configure_file(${CMAKE_SOURCE_DIR}/tests/cmake/host.hal_def.h
                ${CMAKE_CURRENT_BINARY_DIR}/${libName}/stm32f4xx_hal_def.h
+               COPYONLY)
+
+# Copy stub stm32f4xx_hal.h for production code includes
+configure_file(${CMAKE_SOURCE_DIR}/tests/cmake/stm32f4xx_hal.h
+               ${CMAKE_CURRENT_BINARY_DIR}/${libName}/stm32f4xx_hal.h
+               COPYONLY)
+
+# Copy stub stm32f4xx_ll_gpio.h for production code includes
+configure_file(${CMAKE_SOURCE_DIR}/tests/cmake/stm32f4xx_ll_gpio.h
+               ${CMAKE_CURRENT_BINARY_DIR}/${libName}/stm32f4xx_ll_gpio.h
+               COPYONLY)
+
+# Copy main.h from cpu_precompiled_hal for production code includes (gpio_struct.c needs this)
+configure_file(${cpu_precompiled_hal_SOURCE_DIR}/include/cpb/main.h
+               ${CMAKE_CURRENT_BINARY_DIR}/${libName}/main.h
                COPYONLY)
 
 # Generate mocks for each header
@@ -50,13 +66,15 @@ foreach(element IN LISTS ${libName}_HEADERS)
         string(REGEX REPLACE "typedef enum[\r\n\t ]*\\{[\r\n\t ]*GPIO_PIN_RESET[\r\n\t ]*=[\r\n\t ]*0[\r\n\t ]*,[\r\n\t ]*GPIO_PIN_SET[\r\n\t ]*\\}[\r\n\t ]*GPIO_PinState[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
         # Also remove the comment block for GPIO Bit SET and Bit RESET enumeration if it exists
         string(REGEX REPLACE "/\\*\\*[\r\n\t ]*\\*[\r\n\t ]*@brief[ \t]+GPIO Bit SET and Bit RESET enumeration[^\n]*\n[^\n]*\\*/" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        # Remove HAL_GPIO_EXTI_Callback declaration (implemented by user code, not mocked)
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_GPIO_EXTI_Callback[\r\n\t ]*\\([\r\n\t ]*uint16_t[\r\n\t ]+GPIO_Pin[\r\n\t ]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
         file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} "${FILE_CONTENTS}")
     endif()
 
     # Generate mock
     message(STATUS "Creating mock for ${fileName}...")
     execute_process(
-        COMMAND ruby ${CMAKE_SOURCE_DIR}/cmake/create_mocks.rb
+        COMMAND ruby ${CMAKE_SOURCE_DIR}/tests/cmake/create_mocks.rb
                 ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName}
         RESULT_VARIABLE mock_result
     )

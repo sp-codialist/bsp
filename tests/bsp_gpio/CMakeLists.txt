@@ -7,21 +7,22 @@ set(targetName test_${DUTName})
 project(${targetName})
 
 # Set CREATE_RUNNER_RUBY_PATH for runner generation script
-set(CREATE_RUNNER_RUBY_PATH ${CMAKE_SOURCE_DIR}/cmake CACHE PATH "Path to ruby scripts")
+set(CREATE_RUNNER_RUBY_PATH ${CMAKE_SOURCE_DIR}/tests/cmake CACHE PATH "Path to ruby scripts")
 
 # Generate mocks for STM32 HAL
-include(${CMAKE_SOURCE_DIR}/cmake/mock.stm32_hal.cmake)
+include(${CMAKE_SOURCE_DIR}/tests/cmake/mock.stm32_hal.cmake)
 
 # Test source files
 set(${targetName}_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/test_bsp_gpio.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/gpio_structs/gpio_struct.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ut_bsp_gpio.c
 )
 
 # Test include directories
 set(${targetName}_INCLUDE_DIR
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/gpio_structs
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../${DUTName}
+    ${CMAKE_CURRENT_BINARY_DIR}/mock_stm32_hal
 )
 
 # Generate Unity test runner
@@ -29,8 +30,8 @@ set(UNITY_RUNNER_PATH ${CMAKE_CURRENT_BINARY_DIR}/runner)
 file(MAKE_DIRECTORY ${UNITY_RUNNER_PATH})
 execute_process(
     COMMAND ruby ${CREATE_RUNNER_RUBY_PATH}/create_runner.rb
-            ${CMAKE_CURRENT_SOURCE_DIR}/test_bsp_gpio.c
-            ${UNITY_RUNNER_PATH}/test_bsp_gpio_runner.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/ut_bsp_gpio.c
+            ${UNITY_RUNNER_PATH}/ut_bsp_gpio_runner.c
     RESULT_VARIABLE runner_result
 )
 
@@ -43,9 +44,10 @@ add_executable(${targetName})
 
 target_sources(${targetName}
     PUBLIC
-        ${UNITY_RUNNER_PATH}/test_bsp_gpio_runner.c
+        ${UNITY_RUNNER_PATH}/ut_bsp_gpio_runner.c
     PRIVATE
         ${${targetName}_SOURCES}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../${DUTName}/${DUTName}.c
 )
 
 target_include_directories(${targetName}
@@ -55,17 +57,11 @@ target_include_directories(${targetName}
 
 target_link_libraries(${targetName}
     PUBLIC
-        ${DUTName}
         mock_stm32_hal
-        unity
 )
 
-# Suppress warnings from production code that we cannot modify
-target_compile_options(${DUTName}
-    PRIVATE
-        -Wno-error=unused-parameter
-        -Wno-error=unused-function
-)
+# Remove the DUT target modification since we're not linking to it
+# Override production gpio_struct.h with test version is handled via include directories
 
 # Compiler options for coverage and debugging
 target_compile_options(${targetName}

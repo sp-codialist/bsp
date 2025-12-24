@@ -36,8 +36,7 @@ add_subdirectory (bsp_led)
 
 # Include Unity/CMock when testing is enabled
 if(ENABLE_TESTING)
-    include(cmake/deps.unity.cmake)
-    include(cmake/deps.cmock.cmake)
+
     enable_testing()
     add_subdirectory (tests)
 endif()

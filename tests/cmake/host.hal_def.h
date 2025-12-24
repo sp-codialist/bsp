@@ -55,6 +55,24 @@ typedef enum
 } GPIO_PinState;
 #endif
 
+/* IRQn_Type enumeration for NVIC (subset needed for host testing) */
+typedef enum
+{
+    EXTI0_IRQn     = 6,
+    EXTI1_IRQn     = 7,
+    EXTI2_IRQn     = 8,
+    EXTI3_IRQn     = 9,
+    EXTI4_IRQn     = 10,
+    EXTI9_5_IRQn   = 23,
+    EXTI15_10_IRQn = 40
+} IRQn_Type;
+
+/* MPU region initialization structure */
+typedef struct
+{
+    uint32_t dummy; /* Placeholder for host testing */
+} MPU_Region_InitTypeDef;
+
 /* Exported types ------------------------------------------------------------*/
 
 /**
