@@ -46,7 +46,6 @@ target_sources(${targetName}
         ${UNITY_RUNNER_PATH}/ut_bsp_gpio_runner.c
     PRIVATE
         ${${targetName}_SOURCES}
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../${DUTName}/${DUTName}.c
 )
 
 target_include_directories(${targetName}
@@ -56,7 +55,7 @@ target_include_directories(${targetName}
 
 target_link_libraries(${targetName}
     PUBLIC
-        mock_stm32_hal
+        bsp_gpio  # Links against bsp_gpio library which uses mock_stm32_hal when BUILD_TESTING is set
 )
 
 # Remove the DUT target modification since we're not linking to it

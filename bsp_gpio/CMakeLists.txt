@@ -15,15 +15,21 @@ target_sources (${libName}
     PRIVATE
     $<$<NOT:$<BOOL:${BUILD_TESTING}>>:${CMAKE_CURRENT_SOURCE_DIR}/gpio_structs/gpio_struct.c>
 )
-target_include_directories (${libName} PUBLIC
+target_include_directories (${libName}
+    PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/gpio_structs
     PRIVATE
-    ${CPB_INCLUDE_DIRS}
+    $<$<NOT:$<BOOL:${BUILD_TESTING}>>:${CPB_INCLUDE_DIRS}>
 )
-target_link_libraries (${libName} PRIVATE
-    ${CPB_LIBRARIES}
+
+target_link_libraries (${libName}
+    PUBLIC
+    $<$<BOOL:${BUILD_TESTING}>:mock_stm32_hal>
+    PRIVATE
+    $<$<NOT:$<BOOL:${BUILD_TESTING}>>:${CPB_LIBRARIES}>
 )
+
 target_compile_options (${libName} PRIVATE
     -Wall
     -Wextra
