@@ -8,6 +8,8 @@
 
 #include "bsp_gpio.h"
 #include "gpio_structs/gpio_struct.h"
+#include "stm32f4xx_hal_cortex.h"
+#include "stm32f4xx_hal_gpio.h"
 #include "stm32f4xx_ll_gpio.h"
 
 /** static bsp pins that relate to each gpio in the ioc hal layer */

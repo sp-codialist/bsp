@@ -95,6 +95,17 @@ typedef enum
     HAL_LOCKED   = 0x01U
 } HAL_LockTypeDef;
 
+/**
+ * @brief  HAL TICK frequency
+ */
+typedef enum
+{
+    HAL_TICK_FREQ_10HZ    = 100U,
+    HAL_TICK_FREQ_100HZ   = 10U,
+    HAL_TICK_FREQ_1KHZ    = 1U,
+    HAL_TICK_FREQ_DEFAULT = HAL_TICK_FREQ_1KHZ
+} HAL_TickFreqTypeDef;
+
 /* Exported macros -----------------------------------------------------------*/
 
 #define HAL_MAX_DELAY 0xFFFFFFFFU
@@ -247,6 +258,11 @@ typedef enum
     #define __NOINLINE _Pragma("optimize = no_inline")
 
 #endif /* __CC_ARM || __GNUC__ */
+
+/* CMSIS Core instruction interface stubs for host testing */
+#define __DMB() ((void)0) /* Data Memory Barrier - no-op for host testing */
+#define __DSB() ((void)0) /* Data Synchronization Barrier - no-op for host testing */
+#define __ISB() ((void)0) /* Instruction Synchronization Barrier - no-op for host testing */
 
 #ifdef __cplusplus
 }

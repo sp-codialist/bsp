@@ -3,14 +3,33 @@ cmake_minimum_required(VERSION 3.13)
 set (libName bsp_swtimer)
 project(${libName} C)
 
-add_library (${libName} STATIC
+add_library (${libName} STATIC)
+target_sources (${libName}
+    PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/${libName}.c
 )
-target_include_directories (${libName} PUBLIC
+target_include_directories (${libName}
+    PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     PRIVATE
-    ${CPB_INCLUDE_DIRS}
+    $<$<NOT:$<BOOL:${BUILD_TESTING}>>:${CPB_INCLUDE_DIRS}>
 )
-target_link_libraries (${libName} PRIVATE
-    ${CPB_LIBRARIES}
+
+target_link_libraries (${libName}
+    PUBLIC
+    $<$<BOOL:${BUILD_TESTING}>:mock_stm32_hal>
+    PRIVATE
+    $<$<NOT:$<BOOL:${BUILD_TESTING}>>:${CPB_LIBRARIES}>
+)
+
+target_compile_options (${libName} PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Werror
+    $<$<BOOL:${BUILD_TESTING}>:--coverage -fprofile-arcs -ftest-coverage>
+)
+
+target_link_options(${libName} PRIVATE
+    $<$<BOOL:${BUILD_TESTING}>:--coverage>
 )

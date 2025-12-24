@@ -23,6 +23,9 @@ GPIO_PinState HAL_GPIO_ReadPin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
 /* NVIC function declarations (will be mocked) */
 void HAL_NVIC_EnableIRQ(IRQn_Type IRQn);
 
+/* Tick function declarations (will be mocked) */
+uint32_t HAL_GetTick(void);
+
 /* GPIO pin defines */
 #define GPIO_PIN_0  ((uint16_t)0x0001)
 #define GPIO_PIN_1  ((uint16_t)0x0002)

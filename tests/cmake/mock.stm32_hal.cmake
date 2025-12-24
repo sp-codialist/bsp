@@ -6,6 +6,7 @@ set(libName mock_stm32_hal)
 set(${libName}_HEADERS
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_gpio.h
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_cortex.h
+    ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal.h
 )
 
 # Additional HAL headers that need to be copied (dependencies)
@@ -68,6 +69,26 @@ foreach(element IN LISTS ${libName}_HEADERS)
         string(REGEX REPLACE "/\\*\\*[\r\n\t ]*\\*[\r\n\t ]*@brief[ \t]+GPIO Bit SET and Bit RESET enumeration[^\n]*\n[^\n]*\\*/" "" FILE_CONTENTS "${FILE_CONTENTS}")
         # Remove HAL_GPIO_EXTI_Callback declaration (implemented by user code, not mocked)
         string(REGEX REPLACE "void[\r\n\t ]+HAL_GPIO_EXTI_Callback[\r\n\t ]*\\([\r\n\t ]*uint16_t[\r\n\t ]+GPIO_Pin[\r\n\t ]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} "${FILE_CONTENTS}")
+    endif()
+
+    # Patch stm32f4xx_hal.h to replace hal_conf.h include and remove user callbacks
+    if(fileName STREQUAL "stm32f4xx_hal.h")
+        file(READ ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} FILE_CONTENTS)
+        # Replace hal_conf.h include with hal_def.h
+        string(REGEX REPLACE "#include[ \t]+\"stm32f4xx_hal_conf\\.h\"" "#include \"stm32f4xx_hal_def.h\"" FILE_CONTENTS "${FILE_CONTENTS}")
+        # Remove HAL_MspInit declaration (implemented by user code, not mocked)
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_MspInit[\r\n\t ]*\\([\r\n\t ]*void[\r\n\t ]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        # Remove HAL_MspDeInit declaration (implemented by user code, not mocked)
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_MspDeInit[\r\n\t ]*\\([\r\n\t ]*void[\r\n\t ]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        # Remove duplicate HAL_TickFreqTypeDef definition (already in hal_def.h)
+        string(REGEX REPLACE "typedef enum[\r\n\t ]*\\{[^}]*HAL_TICK_FREQ_[^}]*\\}[\r\n\t ]*HAL_TickFreqTypeDef[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        # Remove __IO uwTick variable declaration (not available in host environment)
+        string(REGEX REPLACE "extern[ \t]+__IO[ \t]+uint32_t[ \t]+uwTick[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        # Remove uwTickPrio variable declaration
+        string(REGEX REPLACE "extern[ \t]+HAL_TickFreqTypeDef[ \t]+uwTickPrio[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        # Remove uwTickFreq variable declaration
+        string(REGEX REPLACE "extern[ \t]+HAL_TickFreqTypeDef[ \t]+uwTickFreq[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
         file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} "${FILE_CONTENTS}")
     endif()
 
