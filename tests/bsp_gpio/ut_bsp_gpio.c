@@ -6,19 +6,20 @@
 
 #include "Mockstm32f4xx_hal_cortex.h"
 #include "Mockstm32f4xx_hal_gpio.h"
+
+// Test-specific GPIO configuration
+// gpio_t type definition for test
+typedef struct
+{
+    GPIO_TypeDef* pPort;
+    uint32_t      uPin;
+} gpio_t;
+
+// eGPIO_COUNT is provided via compile definition (-DeGPIO_COUNT=6)
+
+// Now include bsp_gpio.h
 #include "bsp_gpio.h"
-#include "gpio_structs/gpio_struct.h"
 #include "unity.h"
-
-// Compile-time check that test version of gpio_struct.h is being used
-#ifndef GPIO_STRUCT_TEST_VERSION
-    #error "Production gpio_struct.h is being used instead of test version!"
-#endif
-
-// Verify eGPIO_COUNT is defined correctly
-#if eGPIO_COUNT != 6
-    #error "eGPIO_COUNT is not 6!"
-#endif
 
 // External declaration for HAL callback implemented in production code
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
@@ -28,14 +29,19 @@ static GPIO_TypeDef mock_GPIOA;
 static GPIO_TypeDef mock_GPIOB;
 static GPIO_TypeDef mock_GPIOC;
 
-// Define test GPIO pins array (mirrors what would be in gpio_struct.c)
+// Test-specific GPIO pin indices
+#define TEST_eM_LED1      0
+#define TEST_eM_LED2      1
+#define TEST_eM_LED3      2
+#define TEST_eM_LED_LIFE  3
+#define TEST_eM_FLASH_NCS 4
+#define TEST_eM_FLASH_SCK 5
+
+// Test gpio_pins array - provides mock GPIO configuration for testing
 const gpio_t gpio_pins[eGPIO_COUNT] = {
-    [0] = {&mock_GPIOA, GPIO_PIN_0},  // eGPIO index 0
-    [1] = {&mock_GPIOA, GPIO_PIN_1},  // eGPIO index 1
-    [2] = {&mock_GPIOA, GPIO_PIN_5},  // eGPIO index 2
-    [3] = {&mock_GPIOB, GPIO_PIN_7},  // eGPIO index 3
-    [4] = {&mock_GPIOC, GPIO_PIN_13}, // eGPIO index 4
-    [5] = {NULL, GPIO_PIN_0},         // eGPIO index 5 - NULL port for testing
+    [TEST_eM_LED1] = {&mock_GPIOA, GPIO_PIN_0},       [TEST_eM_LED2] = {&mock_GPIOA, GPIO_PIN_1},
+    [TEST_eM_LED3] = {&mock_GPIOA, GPIO_PIN_5},       [TEST_eM_LED_LIFE] = {&mock_GPIOB, GPIO_PIN_7},
+    [TEST_eM_FLASH_NCS] = {&mock_GPIOC, GPIO_PIN_13}, [TEST_eM_FLASH_SCK] = {NULL, GPIO_PIN_0}, // NULL port for testing
 };
 
 // Test callback tracker
@@ -84,7 +90,7 @@ void tearDown(void)
 void test_BspGpioWritePin_SetHigh_ValidPin(void)
 {
     // Arrange
-    uint32_t pin_index = 0;
+    uint32_t pin_index = TEST_eM_LED1;
 
     // Expect HAL function to be called with GPIO_PIN_SET
     HAL_GPIO_WritePin_Expect(&mock_GPIOA, GPIO_PIN_0, GPIO_PIN_SET);
@@ -98,7 +104,7 @@ void test_BspGpioWritePin_SetHigh_ValidPin(void)
 void test_BspGpioWritePin_SetLow_ValidPin(void)
 {
     // Arrange
-    uint32_t pin_index = 1;
+    uint32_t pin_index = TEST_eM_LED2;
 
     // Expect HAL function to be called with GPIO_PIN_RESET
     HAL_GPIO_WritePin_Expect(&mock_GPIOA, GPIO_PIN_1, GPIO_PIN_RESET);
@@ -156,7 +162,7 @@ void test_BspGpioWritePin_MultipleValidPins(void)
 void test_BspGpioTogglePin_ValidPin(void)
 {
     // Arrange
-    uint32_t pin_index = 2;
+    uint32_t pin_index = TEST_eM_LED3;
 
     // Expect HAL toggle function
     HAL_GPIO_TogglePin_Expect(&mock_GPIOA, GPIO_PIN_5);
@@ -213,7 +219,7 @@ void test_BspGpioTogglePin_MultiplePins(void)
 void test_BspGpioReadPin_ReturnsHigh(void)
 {
     // Arrange
-    uint32_t pin_index = 0;
+    uint32_t pin_index = TEST_eM_LED1;
 
     // Expect HAL function and return GPIO_PIN_SET
     HAL_GPIO_ReadPin_ExpectAndReturn(&mock_GPIOA, GPIO_PIN_0, GPIO_PIN_SET);
@@ -228,7 +234,7 @@ void test_BspGpioReadPin_ReturnsHigh(void)
 void test_BspGpioReadPin_ReturnsLow(void)
 {
     // Arrange
-    uint32_t pin_index = 1;
+    uint32_t pin_index = TEST_eM_LED2;
 
     // Expect HAL function and return GPIO_PIN_RESET
     HAL_GPIO_ReadPin_ExpectAndReturn(&mock_GPIOA, GPIO_PIN_1, GPIO_PIN_RESET);
@@ -288,7 +294,7 @@ void test_BspGpioReadPin_MultiplePins_DifferentStates(void)
 void test_BspGpioSetIRQHandler_ValidPin_ValidCallback(void)
 {
     // Arrange
-    uint32_t pin_index = 0;
+    uint32_t pin_index = TEST_eM_LED1;
 
     // Act
     BspGpioSetIRQHandler(pin_index, test_callback);
@@ -300,7 +306,7 @@ void test_BspGpioSetIRQHandler_ValidPin_ValidCallback(void)
 void test_BspGpioSetIRQHandler_ValidPin_NullCallback(void)
 {
     // Arrange
-    uint32_t pin_index = 1;
+    uint32_t pin_index = TEST_eM_LED1;
 
     // Act - should accept NULL callback
     BspGpioSetIRQHandler(pin_index, NULL);
@@ -322,7 +328,7 @@ void test_BspGpioSetIRQHandler_InvalidIndex_NoAction(void)
 void test_BspGpioSetIRQHandler_NullPort_NoAction(void)
 {
     // Arrange
-    uint32_t null_port_index = 5;
+    uint32_t null_port_index = TEST_eM_FLASH_SCK; // NULL port pin
 
     // Act
     BspGpioSetIRQHandler(null_port_index, test_callback);
@@ -333,7 +339,7 @@ void test_BspGpioSetIRQHandler_NullPort_NoAction(void)
 void test_BspGpioSetIRQHandler_OverwriteCallback(void)
 {
     // Arrange
-    uint32_t pin_index = 2;
+    uint32_t pin_index = TEST_eM_LED1;
 
     // Act - set callback twice
     BspGpioSetIRQHandler(pin_index, test_callback);
@@ -349,7 +355,7 @@ void test_BspGpioSetIRQHandler_OverwriteCallback(void)
 void test_BspGpioEnableIRQ_Pin0_EnablesEXTI0(void)
 {
     // Arrange
-    uint32_t pin_index = 0; // GPIO_PIN_0
+    uint32_t pin_index = TEST_eM_LED1; // GPIO_PIN_0
 
     // Expect NVIC enable for EXTI0
     HAL_NVIC_EnableIRQ_Expect(EXTI0_IRQn);
@@ -363,7 +369,7 @@ void test_BspGpioEnableIRQ_Pin0_EnablesEXTI0(void)
 void test_BspGpioEnableIRQ_Pin1_EnablesEXTI1(void)
 {
     // Arrange
-    uint32_t pin_index = 1; // GPIO_PIN_1
+    uint32_t pin_index = TEST_eM_LED2; // GPIO_PIN_1
 
     // Expect NVIC enable for EXTI1
     HAL_NVIC_EnableIRQ_Expect(EXTI1_IRQn);
@@ -377,7 +383,7 @@ void test_BspGpioEnableIRQ_Pin1_EnablesEXTI1(void)
 void test_BspGpioEnableIRQ_Pin5_EnablesEXTI9_5(void)
 {
     // Arrange
-    uint32_t pin_index = 2; // GPIO_PIN_5
+    uint32_t pin_index = TEST_eM_LED3; // GPIO_PIN_5
 
     // Expect NVIC enable for EXTI9_5
     HAL_NVIC_EnableIRQ_Expect(EXTI9_5_IRQn);
@@ -391,7 +397,7 @@ void test_BspGpioEnableIRQ_Pin5_EnablesEXTI9_5(void)
 void test_BspGpioEnableIRQ_Pin7_EnablesEXTI9_5(void)
 {
     // Arrange
-    uint32_t pin_index = 3; // GPIO_PIN_7
+    uint32_t pin_index = TEST_eM_LED_LIFE; // GPIO_PIN_7
 
     // Expect NVIC enable for EXTI9_5
     HAL_NVIC_EnableIRQ_Expect(EXTI9_5_IRQn);
@@ -405,7 +411,7 @@ void test_BspGpioEnableIRQ_Pin7_EnablesEXTI9_5(void)
 void test_BspGpioEnableIRQ_Pin13_EnablesEXTI15_10(void)
 {
     // Arrange
-    uint32_t pin_index = 4; // GPIO_PIN_13
+    uint32_t pin_index = TEST_eM_FLASH_NCS; // GPIO_PIN_13
 
     // Expect NVIC enable for EXTI15_10
     HAL_NVIC_EnableIRQ_Expect(EXTI15_10_IRQn);
@@ -436,7 +442,7 @@ void test_BspGpioEnableIRQ_InvalidIndex_NoAction(void)
 void test_HAL_GPIO_EXTI_Callback_ValidPin_CallbackRegistered(void)
 {
     // Arrange
-    uint32_t pin_index = 0;
+    uint32_t pin_index = TEST_eM_LED1;
     BspGpioSetIRQHandler(pin_index, test_callback);
 
     // Act
@@ -464,8 +470,8 @@ void test_HAL_GPIO_EXTI_Callback_MultiplePins_DifferentCallbacks(void)
     // Arrange
     callback2_invoked = false;
 
-    BspGpioSetIRQHandler(0, test_callback);
-    BspGpioSetIRQHandler(1, test_callback2);
+    BspGpioSetIRQHandler(TEST_eM_LED1, test_callback);
+    BspGpioSetIRQHandler(TEST_eM_LED2, test_callback2);
 
     // Act - trigger first pin
     HAL_GPIO_EXTI_Callback(GPIO_PIN_0);
@@ -496,7 +502,7 @@ void test_HAL_GPIO_EXTI_Callback_UnknownPin_NoAction(void)
 void test_HAL_GPIO_EXTI_Callback_CallbackInvokedMultipleTimes(void)
 {
     // Arrange
-    BspGpioSetIRQHandler(0, test_callback);
+    BspGpioSetIRQHandler(TEST_eM_LED1, test_callback);
 
     // Act - trigger callback multiple times
     HAL_GPIO_EXTI_Callback(GPIO_PIN_0);
@@ -532,8 +538,8 @@ void test_BoundaryConditions_IndexJustBelowLimit(void)
 {
     // Create a test pin at the last valid index
     // Note: In real implementation, this would use actual gpio_pins[eGPIO_COUNT-1]
-    // For this test, we use index 4 which is within bounds
-    uint32_t last_valid_index = 4;
+    // For this test, we use TEST_eM_FLASH_NCS which is within bounds
+    uint32_t last_valid_index = TEST_eM_FLASH_NCS;
 
     // Should work normally
     HAL_GPIO_WritePin_Expect(&mock_GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
@@ -543,7 +549,7 @@ void test_BoundaryConditions_IndexJustBelowLimit(void)
 void test_Integration_CompleteWorkflow(void)
 {
     // Arrange - simulate a complete GPIO workflow
-    uint32_t pin_index = 0;
+    uint32_t pin_index = TEST_eM_LED1;
 
     // Setup callback
     BspGpioSetIRQHandler(pin_index, test_callback);
@@ -572,7 +578,7 @@ void test_Integration_CompleteWorkflow(void)
 void test_StressTest_RapidSuccessiveOperations(void)
 {
     // Test rapid successive operations on same pin
-    uint32_t pin_index = 1;
+    uint32_t pin_index = TEST_eM_LED2;
 
     for (int i = 0; i < 5; i++)
     {

@@ -8,8 +8,21 @@
 
 #include "bsp_gpio.h"
 
-#include "gpio_structs/gpio_struct.h"
-#include "stm32f4xx_ll_gpio.h"
+#ifdef GPIO_STRUCT_AVAILABLE
+    // Production build
+    #include "gpio_structs/gpio_struct.h"
+    #include "stm32f4xx_ll_gpio.h"
+#else
+    // Test build - get types from mocks first, then define gpio_t
+    #include "stm32f4xx_hal_cortex.h"
+    #include "stm32f4xx_hal_gpio.h"
+
+typedef struct
+{
+    GPIO_TypeDef* pPort;
+    uint32_t      uPin;
+} gpio_t;
+#endif
 
 /** static bsp pins that relate to each gpio in the ioc hal layer */
 static GpioIrqCb_t  s_aBspGpioPins[eGPIO_COUNT] = {NULL};

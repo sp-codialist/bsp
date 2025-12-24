@@ -20,7 +20,6 @@ set(${targetName}_SOURCES
 # Test include directories
 set(${targetName}_INCLUDE_DIR
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/gpio_structs
     ${CMAKE_CURRENT_SOURCE_DIR}/../../${DUTName}
     ${CMAKE_CURRENT_BINARY_DIR}/mock_stm32_hal
 )
@@ -72,6 +71,7 @@ target_compile_options(${targetName}
         -Wshadow
         -fprofile-arcs
         -ftest-coverage
+        -DeGPIO_COUNT=6  # Test uses 6 GPIO pins
 )
 
 # Linker options for coverage
