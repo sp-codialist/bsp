@@ -75,6 +75,14 @@ foreach(element IN LISTS ${libName}_HEADERS)
         file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} "${FILE_CONTENTS}")
     endif()
 
+    # Patch stm32f4xx_hal_cortex.h to remove user callbacks
+    if(fileName STREQUAL "stm32f4xx_hal_cortex.h")
+        file(READ ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} FILE_CONTENTS)
+        # Remove HAL_SYSTICK_Callback declaration (implemented by user code, not mocked)
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_SYSTICK_Callback[\r\n\t ]*\\([\r\n\t ]*void[\r\n\t ]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} "${FILE_CONTENTS}")
+    endif()
+
     # Patch stm32f4xx_hal.h to replace hal_conf.h include and remove user callbacks
     if(fileName STREQUAL "stm32f4xx_hal.h")
         file(READ ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} FILE_CONTENTS)

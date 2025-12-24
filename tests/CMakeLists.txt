@@ -9,4 +9,5 @@ include (cmake/mock.stm32_hal.cmake)
 
 # add subdirectories for test cases
 add_subdirectory (bsp_gpio)
+add_subdirectory (bsp_led)
 add_subdirectory (bsp_swtimer)
