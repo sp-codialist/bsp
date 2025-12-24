@@ -26,7 +26,7 @@ extern "C"
  */
 typedef struct
 {
-    GpioPort_e    ePin;                     /**< GPIO pin associated with the LED */
+    uint32_t      ePin;                     /**< GPIO pin associated with the LED */
     bool          bState;                   /**< Current output state */
     uint16_t      wUpdPeriod;               /**< Main blink period (in timer ticks) */
     uint16_t      wUpdPeriodDoubleBlink;    /**< Double-blink interval (in timer ticks) */
