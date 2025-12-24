@@ -147,15 +147,6 @@ jobs:
         recreate: true
         path: code-coverage-results.md
 
-    - name: Update Coverage Badge Gist
-      if: matrix.preset == 'bsp-test-host' && (github.ref == 'refs/heads/main' || github.event_name == 'push')
-      uses: exuanbo/actions-deploy-gist@v1
-      with:
-        token: ${{ secrets.GIST_TOKEN }}
-        gist_id: ${{ secrets.COVERAGE_GIST_ID }}
-        file_path: build/bsp-test-host/badge/coverage.json
-        file_type: text
-
     - name: Upload Coverage Reports
       if: matrix.preset == 'bsp-test-host'
       uses: actions/upload-artifact@v4
