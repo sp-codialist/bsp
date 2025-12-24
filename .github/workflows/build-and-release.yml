@@ -48,37 +48,13 @@ jobs:
         # Create coverage directory
         mkdir -p coverage
 
-        # Generate Cobertura XML for coverage display
+        # Generate coverage reports using gcovr.cfg configuration
         gcovr -r ../../ . \
-          --exclude '.*/_deps/.*' \
-          --exclude '.*/tests/.*' \
-          --exclude '.*runner.*' \
+          --config ../../gcovr.cfg \
           --cobertura coverage/cobertura.xml \
           --html-details coverage/index.html \
+          --txt coverage/summary.txt \
           --print-summary
-
-        # Generate coverage summary for threshold check
-        gcovr -r ../../ . \
-          --exclude '.*/_deps/.*' \
-          --exclude '.*/tests/.*' \
-          --exclude '.*runner.*' \
-          --json coverage/coverage.json
-
-    - name: Check Coverage Threshold
-      working-directory: build/bsp-test-host
-      run: |
-        # Extract line coverage percentage from JSON
-        COVERAGE=$(python3 -c "import json; data=json.load(open('coverage/coverage.json')); print(data['line_percent'])")
-        echo "Line Coverage: ${COVERAGE}%"
-
-        # Check if coverage meets minimum threshold
-        THRESHOLD=90.0
-        if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
-          echo "❌ Coverage ${COVERAGE}% is below minimum threshold ${THRESHOLD}%"
-          exit 1
-        else
-          echo "✅ Coverage ${COVERAGE}% meets minimum threshold ${THRESHOLD}%"
-        fi
 
     - name: Code Coverage Report
       uses: irongut/CodeCoverageSummary@v1.3.0
