@@ -55,8 +55,6 @@ target_include_directories(${targetName}
 target_link_libraries(${targetName}
     PUBLIC
         bsp_led       # Links against bsp_led library which includes all dependencies
-        #bsp_gpio      # Links against bsp_gpio library which uses mock_stm32_hal when BUILD_TESTING is set
-        #bsp_swtimer   # Links against bsp_swtimer library which uses mock_stm32_hal when BUILD_TESTING
         unity         # Unity test framework
         cmock         # CMock library
         mock_stm32_hal # Mock HAL library

@@ -1,5 +1,7 @@
 #include <stddef.h>
 
+#include "bsp_compiler_attributes.h"
+
 #include "bsp_swtimer.h"
 #include "stm32f4xx_hal.h"
 
@@ -7,10 +9,10 @@
 #define MAX_SW_TIMERS 16
 
 /** Static array to hold pointers to all registered timers */
-static SWTimerModule* registeredTimers[MAX_SW_TIMERS] = {NULL};
+FORCE_STATIC SWTimerModule* registeredTimers[MAX_SW_TIMERS] = {NULL};
 
 /** Count of currently registered timers */
-static uint8_t registeredTimerCount = 0;
+FORCE_STATIC uint8_t registeredTimerCount = 0;
 
 /**
  * @brief Initialize software timer module by registering it for automatic processing.

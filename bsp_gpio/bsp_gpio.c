@@ -6,6 +6,8 @@
  */
 #include <stddef.h>
 
+#include "bsp_compiler_attributes.h"
+
 #include "bsp_gpio.h"
 #include "gpio_structs/gpio_struct.h"
 #include "stm32f4xx_hal_cortex.h"
@@ -13,11 +15,11 @@
 #include "stm32f4xx_ll_gpio.h"
 
 /** static bsp pins that relate to each gpio in the ioc hal layer */
-static GpioIrqCb_t  s_aBspGpioPins[eGPIO_COUNT] = {NULL};
-extern const gpio_t gpio_pins[eGPIO_COUNT];
+FORCE_STATIC GpioIrqCb_t s_aBspGpioPins[eGPIO_COUNT] = {NULL};
+extern const gpio_t      gpio_pins[eGPIO_COUNT];
 
 /** static functions */
-static uint32_t getGpioIndexFromPin(uint16_t GPIO_Pin);
+FORCE_STATIC uint32_t getGpioIndexFromPin(uint16_t GPIO_Pin);
 
 void BspGpioWritePin(uint32_t const ePin, bool const bSet)
 {
@@ -142,7 +144,7 @@ void BspGpioEnableIRQ(uint32_t const ePin)
     } while (false);
 }
 
-static uint32_t getGpioIndexFromPin(uint16_t GPIO_Pin)
+FORCE_STATIC uint32_t getGpioIndexFromPin(uint16_t GPIO_Pin)
 {
     uint32_t retIndex = eGPIO_COUNT;
     for (uint32_t i = 0; i < eGPIO_COUNT; i++)

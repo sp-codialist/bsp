@@ -6,6 +6,8 @@
  */
 #include <stddef.h>
 
+#include "bsp_compiler_attributes.h"
+
 #include "bsp_led.h"
 #include "stm32f4xx_hal.h"
 
@@ -15,18 +17,19 @@
 
 // --- Module Variables ---
 
-static LiveLed_t*    s_pRegisteredLeds[LED_MAX_COUNT] = {NULL};
-static uint8_t       s_byRegisteredCount              = 0u;
-static SWTimerModule s_timer;
-static bool          s_bTimerInitialized = false;
+FORCE_STATIC LiveLed_t*    s_pRegisteredLeds[LED_MAX_COUNT] = {NULL};
+FORCE_STATIC uint8_t       s_byRegisteredCount              = 0u;
+FORCE_STATIC SWTimerModule s_timer;
+FORCE_STATIC bool          s_bTimerInitialized = false;
+FORCE_STATIC uint16_t      updateCounter       = 0u;
 
 // --- Private Function Prototypes ---
 
-static void ProcessAllLeds(void);
-static void ProcessLedBlink(LiveLed_t* const pLed);
-static void ProcessLedOneBlink(LiveLed_t* const pLed);
-static void ProcessLedDoubleBlink(LiveLed_t* const pLed);
-static void ApplyPendingUpdate(LiveLed_t* const pLed);
+FORCE_STATIC void ProcessAllLeds(void);
+FORCE_STATIC void ProcessLedBlink(LiveLed_t* const pLed);
+FORCE_STATIC void ProcessLedOneBlink(LiveLed_t* const pLed);
+FORCE_STATIC void ProcessLedDoubleBlink(LiveLed_t* const pLed);
+FORCE_STATIC void ApplyPendingUpdate(LiveLed_t* const pLed);
 
 // --- Public API Implementation ---
 
@@ -168,10 +171,10 @@ void LedBlink(LiveLed_t* const pLed)
 
 // --- Private Function Implementations ---
 
-static void ProcessAllLeds(void)
+FORCE_STATIC void ProcessAllLeds(void)
 {
-    static uint16_t updateCounter = 0u;
-    bool            bApplyUpdates = false;
+
+    bool bApplyUpdates = false;
 
     updateCounter++;
     if (updateCounter >= LED_UPDATE_PERIOD_50MS)
@@ -197,7 +200,7 @@ static void ProcessAllLeds(void)
     }
 }
 
-static void ProcessLedBlink(LiveLed_t* const pLed)
+FORCE_STATIC void ProcessLedBlink(LiveLed_t* const pLed)
 {
     do
     {
@@ -232,7 +235,7 @@ static void ProcessLedBlink(LiveLed_t* const pLed)
     } while (false);
 }
 
-static void ProcessLedOneBlink(LiveLed_t* const pLed)
+FORCE_STATIC void ProcessLedOneBlink(LiveLed_t* const pLed)
 {
     do
     {
@@ -262,7 +265,7 @@ static void ProcessLedOneBlink(LiveLed_t* const pLed)
     } while (false);
 }
 
-static void ProcessLedDoubleBlink(LiveLed_t* const pLed)
+FORCE_STATIC void ProcessLedDoubleBlink(LiveLed_t* const pLed)
 {
     do
     {
@@ -289,7 +292,7 @@ static void ProcessLedDoubleBlink(LiveLed_t* const pLed)
     } while (false);
 }
 
-static void ApplyPendingUpdate(LiveLed_t* const pLed)
+FORCE_STATIC void ApplyPendingUpdate(LiveLed_t* const pLed)
 {
     do
     {

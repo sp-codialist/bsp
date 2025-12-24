@@ -17,6 +17,7 @@ target_include_directories (${libName}
 
 target_link_libraries (${libName}
     PUBLIC
+    bsp_common
     $<$<BOOL:${BUILD_TESTING}>:mock_stm32_hal>
     PRIVATE
     $<$<NOT:$<BOOL:${BUILD_TESTING}>>:${CPB_LIBRARIES}>
@@ -28,6 +29,10 @@ target_compile_options (${libName} PRIVATE
     -Wpedantic
     -Werror
     $<$<BOOL:${BUILD_TESTING}>:--coverage -fprofile-arcs -ftest-coverage>
+)
+
+target_compile_definitions(${libName} PRIVATE
+    $<$<BOOL:${BUILD_TESTING}>:UNITY_UNIT_TESTS>
 )
 
 target_link_options(${libName} PRIVATE

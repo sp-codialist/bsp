@@ -29,14 +29,13 @@ endif()
 
 include (cmake/deps.hal.cmake)
 
-
+add_subdirectory (bsp_common)
 add_subdirectory (bsp_gpio)
 add_subdirectory (bsp_swtimer)
 add_subdirectory (bsp_led)
 
 # Include Unity/CMock when testing is enabled
-if(ENABLE_TESTING)
-
+if(DEFINED BUILD_TESTING)
     enable_testing()
     add_subdirectory (tests)
 endif()
