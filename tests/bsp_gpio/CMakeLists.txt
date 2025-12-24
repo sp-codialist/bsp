@@ -71,7 +71,6 @@ target_compile_options(${targetName}
         -Wshadow
         -fprofile-arcs
         -ftest-coverage
-        -DeGPIO_COUNT=6  # Test uses 6 GPIO pins
 )
 
 # Linker options for coverage
