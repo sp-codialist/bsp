@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 # Test target name
-set(DUTName bsp_gpio)
+set(DUTName bsp_swtimer)
 set(targetName test_${DUTName})
 
 project(${targetName})
@@ -11,7 +11,7 @@ set(CREATE_RUNNER_RUBY_PATH ${CMAKE_SOURCE_DIR}/tests/cmake CACHE PATH "Path to 
 
 # Test source files
 set(${targetName}_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/ut_bsp_gpio.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ut_bsp_swtimer.c
 )
 
 # Test include directories
@@ -26,8 +26,8 @@ set(UNITY_RUNNER_PATH ${CMAKE_CURRENT_BINARY_DIR}/runner)
 file(MAKE_DIRECTORY ${UNITY_RUNNER_PATH})
 execute_process(
     COMMAND ruby ${CREATE_RUNNER_RUBY_PATH}/create_runner.rb
-            ${CMAKE_CURRENT_SOURCE_DIR}/ut_bsp_gpio.c
-            ${UNITY_RUNNER_PATH}/ut_bsp_gpio_runner.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/ut_bsp_swtimer.c
+            ${UNITY_RUNNER_PATH}/ut_bsp_swtimer_runner.c
     RESULT_VARIABLE runner_result
 )
 
@@ -40,7 +40,7 @@ add_executable(${targetName})
 
 target_sources(${targetName}
     PUBLIC
-        ${UNITY_RUNNER_PATH}/ut_bsp_gpio_runner.c
+        ${UNITY_RUNNER_PATH}/ut_bsp_swtimer_runner.c
     PRIVATE
         ${${targetName}_SOURCES}
 )
@@ -52,11 +52,8 @@ target_include_directories(${targetName}
 
 target_link_libraries(${targetName}
     PUBLIC
-        bsp_gpio  # Links against bsp_gpio library which uses mock_stm32_hal when BUILD_TESTING is set
+        bsp_swtimer  # Links against bsp_swtimer library which uses mock_stm32_hal when BUILD_TESTING is set
 )
-
-# Remove the DUT target modification since we're not linking to it
-# Override production gpio_struct.h with test version is handled via include directories
 
 # Compiler options for coverage and debugging
 target_compile_options(${targetName}

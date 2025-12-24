@@ -2,6 +2,9 @@
 
 set(libName mock_stm32_hal)
 
+# Only create mock library if it doesn't already exist
+if(NOT TARGET ${libName})
+
 # HAL headers to mock
 set(${libName}_HEADERS
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_gpio.h
@@ -16,17 +19,17 @@ set(${libName}_DEPENDENCY_HEADERS
 )
 
 # Create directory for mocks
-file(REMOVE_RECURSE ${CMAKE_CURRENT_BINARY_DIR}/${libName})
-file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${libName})
+file(REMOVE_RECURSE ${CMAKE_BINARY_DIR}/tests/${libName})
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/tests/${libName})
 
 # Set environment for mock generation
-set(ENV{MOCK_OUT} ${CMAKE_CURRENT_BINARY_DIR}/${libName}/mocks)
+set(ENV{MOCK_OUT} ${CMAKE_BINARY_DIR}/tests/${libName}/mocks)
 set(ENV{MOCK_PREFIX} Mock)
 
 # Copy dependency headers first
 foreach(dep_header IN LISTS ${libName}_DEPENDENCY_HEADERS)
     if(EXISTS ${dep_header})
-        configure_file(${dep_header} ${CMAKE_CURRENT_BINARY_DIR}/${libName} COPYONLY)
+        configure_file(${dep_header} ${CMAKE_BINARY_DIR}/tests/${libName} COPYONLY)
     else()
         message(WARNING "Dependency header not found: ${dep_header}")
     endif()
@@ -34,22 +37,22 @@ endforeach()
 
 # Copy host-compatible hal_def.h to override the STM32 version
 configure_file(${CMAKE_SOURCE_DIR}/tests/cmake/host.hal_def.h
-               ${CMAKE_CURRENT_BINARY_DIR}/${libName}/stm32f4xx_hal_def.h
+               ${CMAKE_BINARY_DIR}/tests/${libName}/stm32f4xx_hal_def.h
                COPYONLY)
 
 # Copy stub stm32f4xx_hal.h for production code includes
 configure_file(${CMAKE_SOURCE_DIR}/tests/cmake/stm32f4xx_hal.h
-               ${CMAKE_CURRENT_BINARY_DIR}/${libName}/stm32f4xx_hal.h
+               ${CMAKE_BINARY_DIR}/tests/${libName}/stm32f4xx_hal.h
                COPYONLY)
 
 # Copy stub stm32f4xx_ll_gpio.h for production code includes
 configure_file(${CMAKE_SOURCE_DIR}/tests/cmake/stm32f4xx_ll_gpio.h
-               ${CMAKE_CURRENT_BINARY_DIR}/${libName}/stm32f4xx_ll_gpio.h
+               ${CMAKE_BINARY_DIR}/tests/${libName}/stm32f4xx_ll_gpio.h
                COPYONLY)
 
 # Copy main.h from cpu_precompiled_hal for production code includes (gpio_struct.c needs this)
 configure_file(${cpu_precompiled_hal_SOURCE_DIR}/include/cpb/main.h
-               ${CMAKE_CURRENT_BINARY_DIR}/${libName}/main.h
+               ${CMAKE_BINARY_DIR}/tests/${libName}/main.h
                COPYONLY)
 
 # Generate mocks for each header
@@ -118,14 +121,14 @@ target_sources(${libName}
 )
 
 target_include_directories(${libName}
-    PUBLIC
-        $ENV{MOCK_OUT}
-        ${CMAKE_CURRENT_BINARY_DIR}/${libName}
-        ${cpu_precompiled_hal_SOURCE_DIR}/include/cpb
-        ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/Drivers/STM32F4xx_HAL_Driver/Inc
-        ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/Drivers/CMSIS/Device/ST/STM32F4xx/Include
-        ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/Drivers/CMSIS/Core/Include
-)
+        PUBLIC
+            $ENV{MOCK_OUT}
+            ${CMAKE_BINARY_DIR}/tests/${libName}
+            ${cpu_precompiled_hal_SOURCE_DIR}/include/cpb
+            ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/Drivers/STM32F4xx_HAL_Driver/Inc
+            ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/Drivers/CMSIS/Device/ST/STM32F4xx/Include
+            ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/Drivers/CMSIS/Core/Include
+    )
 
 target_link_libraries(${libName}
     PUBLIC
@@ -136,5 +139,7 @@ target_compile_definitions(${libName}
     PUBLIC
         STM32F429xx
 )
+
+endif() # NOT TARGET ${libName}
 
 unset(libName)
