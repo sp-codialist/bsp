@@ -16,86 +16,7 @@ env:
   BUILD_TYPE: Debug
 
 jobs:
-  test-and-coverage:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/kodezine/kdocker:latest
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Fix git safe directory
-      run: |
-        git config --global --add safe.directory /__w/bsp/bsp
-
-    - name: Configure CMake for Testing
-      run: |
-        cmake --preset bsp-test-host
-
-    - name: Build Tests
-      run: |
-        cmake --build --preset bsp-test-host --config Debug
-
-    - name: Run Tests
-      working-directory: build/bsp-test-host
-      run: |
-        ctest -C Debug --output-on-failure
-
-    - name: Generate Coverage Report
-      working-directory: build/bsp-test-host
-      run: |
-        # Create coverage directory
-        mkdir -p coverage
-
-        # Generate coverage reports using gcovr.cfg configuration
-        gcovr -r ../../ . \
-          --config ../../gcovr.cfg \
-          --cobertura coverage/cobertura.xml \
-          --html-details coverage/index.html \
-          --txt coverage/summary.txt \
-          --print-summary
-
-    - name: Display Coverage Summary in Actions
-      working-directory: build/bsp-test-host
-      run: |
-        echo "## 📊 Code Coverage Summary" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-        cat coverage/summary.txt >> $GITHUB_STEP_SUMMARY
-        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Minimum Required Coverage:** 90%" >> $GITHUB_STEP_SUMMARY
-
-    - name: Code Coverage Report
-      uses: irongut/CodeCoverageSummary@v1.3.0
-      with:
-        filename: build/bsp-test-host/coverage/cobertura.xml
-        badge: true
-        fail_below_min: true
-        format: markdown
-        hide_branch_rate: false
-        hide_complexity: true
-        indicators: true
-        output: both
-        thresholds: '90 95'
-
-    - name: Add Coverage PR Comment
-      uses: marocchino/sticky-pull-request-comment@v2
-      if: github.event_name == 'pull_request'
-      with:
-        recreate: true
-        path: code-coverage-results.md
-
-    - name: Upload Coverage Reports
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-report
-        path: |
-          build/bsp-test-host/coverage/
-
-  build:
-    needs: test-and-coverage
+  build-and-test:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/kodezine/kdocker:latest
@@ -103,6 +24,7 @@ jobs:
       fail-fast: false
       matrix:
         preset: [
+          "bsp-test-host",
           "bsp-gnuarm14.3",
           "bsp-atfe21.1"
         ]
@@ -123,21 +45,126 @@ jobs:
       run: |
         cmake --build --preset ${{ matrix.preset }} --config $BUILD_TYPE
 
-    - name: Build Verification
-      working-directory: build/${{ matrix.preset }}
+    - name: Run Tests
+      if: matrix.preset == 'bsp-test-host'
       run: |
-        echo "Build completed successfully for preset ${{ matrix.preset }}"
+        cmake --build --preset ${{ matrix.preset }} --target test
 
-    # - name: Package with CPack
-    #   working-directory: build/${{ matrix.preset }}
-    #   run: |
-    #     # Create packages using CPack
-    #     cpack -G "TGZ" -C $BUILD_TYPE
+    - name: Generate Coverage Report
+      if: matrix.preset == 'bsp-test-host'
+      working-directory: build/bsp-test-host
+      run: |
+        # Create coverage directory
+        mkdir -p coverage
 
-    #     # List generated packages
-    #     ls -la *.tar.gz
+        # Generate coverage reports using gcovr.cfg configuration
+        gcovr -r ../../ . \
+          --config ../../gcovr.cfg \
+          --cobertura coverage/cobertura.xml \
+          --html-details coverage/index.html \
+          --txt coverage/summary.txt \
+          --print-summary
 
-    - name: Upload build artifacts
+    - name: Display Coverage Summary in Actions
+      if: matrix.preset == 'bsp-test-host'
+      working-directory: build/bsp-test-host
+      run: |
+        echo "## 📊 Code Coverage Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        cat coverage/summary.txt >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Minimum Required Coverage:** 90%" >> $GITHUB_STEP_SUMMARY
+
+    - name: Extract Coverage Percentage for Badge
+      if: matrix.preset == 'bsp-test-host'
+      id: coverage
+      working-directory: build/bsp-test-host
+      run: |
+        # Extract line coverage percentage from summary
+        COVERAGE=$(grep -oP 'lines: \K[0-9.]+' coverage/summary.txt | head -1)
+        echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+
+        # Determine badge color based on coverage
+        if (( $(echo "$COVERAGE >= 95" | bc -l) )); then
+          COLOR="brightgreen"
+        elif (( $(echo "$COVERAGE >= 90" | bc -l) )); then
+          COLOR="green"
+        elif (( $(echo "$COVERAGE >= 80" | bc -l) )); then
+          COLOR="yellow"
+        elif (( $(echo "$COVERAGE >= 70" | bc -l) )); then
+          COLOR="orange"
+        else
+          COLOR="red"
+        fi
+        echo "color=$COLOR" >> $GITHUB_OUTPUT
+
+        # Create badge JSON for gist
+        mkdir -p badge
+        cat > badge/coverage.json << EOF
+        {
+          "schemaVersion": 1,
+          "label": "coverage",
+          "message": "${COVERAGE}%",
+          "color": "$COLOR"
+        }
+        EOF
+
+        echo "Coverage: ${COVERAGE}% (Color: $COLOR)"
+
+    - name: Cobertura Coverage Report
+      if: matrix.preset == 'bsp-test-host'
+      uses: 5monkeys/cobertura-action@master
+      with:
+        path: build/bsp-test-host/coverage/cobertura.xml
+        minimum_coverage: 90
+        fail_below_threshold: true
+        show_line: true
+        show_branch: true
+        show_missing: true
+        skip_covered: false
+
+    - name: Code Coverage Report
+      if: matrix.preset == 'bsp-test-host'
+      uses: irongut/CodeCoverageSummary@v1.3.0
+      with:
+        filename: build/bsp-test-host/coverage/cobertura.xml
+        badge: true
+        fail_below_min: true
+        format: markdown
+        hide_branch_rate: false
+        hide_complexity: true
+        indicators: true
+        output: both
+        thresholds: '90 95'
+
+    - name: Add Coverage PR Comment
+      if: matrix.preset == 'bsp-test-host' && github.event_name == 'pull_request'
+      uses: marocchino/sticky-pull-request-comment@v2
+      with:
+        recreate: true
+        path: code-coverage-results.md
+
+    - name: Update Coverage Badge Gist
+      if: matrix.preset == 'bsp-test-host' && (github.ref == 'refs/heads/main' || github.event_name == 'push')
+      uses: exuanbo/actions-deploy-gist@v1
+      with:
+        token: ${{ secrets.GIST_TOKEN }}
+        gist_id: ${{ secrets.COVERAGE_GIST_ID }}
+        file_path: build/bsp-test-host/badge/coverage.json
+        file_type: text
+
+    - name: Upload Coverage Reports
+      if: matrix.preset == 'bsp-test-host'
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: |
+          build/bsp-test-host/coverage/
+
+    - name: Upload Build Artifacts
+      if: matrix.preset != 'bsp-test-host'
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.preset }}-packages
@@ -145,7 +172,7 @@ jobs:
           build/${{ matrix.preset }}/*.tar.gz
 
   release:
-    needs: build
+    needs: build-and-test
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
 

@@ -1,5 +1,8 @@
 # BSP - Board Support Package
 
+[![Build and Test](https://github.com/kodezine/bsp/actions/workflows/build-and-release.yml/badge.svg)](https://github.com/kodezine/bsp/actions/workflows/build-and-release.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/YOUR_USERNAME/YOUR_GIST_ID/raw/coverage.json)](https://github.com/kodezine/bsp/actions/workflows/build-and-release.yml)
+
 A modular Board Support Package (BSP) library for STM32F4 microcontrollers with CMake integration and dependency management via CPM.
 
 ![BSP Architecture](docs/bsp.svg)
