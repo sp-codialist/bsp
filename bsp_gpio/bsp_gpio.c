@@ -1,8 +1,5 @@
 /*
  * bsp_gpio.c
- *
- *  Created on: Jun 20, 2024
- *      Author: IlicAleksander
  */
 #include <stddef.h>
 

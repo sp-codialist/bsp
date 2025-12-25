@@ -1,8 +1,5 @@
 /*
  * bsp_led.c
- *
- *  Created on: May 12, 2025
- *      Author: IlicAleksander
  */
 #include <stddef.h>
 

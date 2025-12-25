@@ -116,9 +116,3 @@ See project license file.
 ---
 
 **Version**: 0.0.0.255
-**Author**: IlicAleksander
-**Last Updated**: December 2025
-
-**Version**: 0.0.0.255
-**Author**: IlicAleksander
-**Last Updated**: December 2025

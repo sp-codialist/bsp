@@ -1,8 +1,5 @@
 /*
  * bsp_gpio.h
- *
- *  Created on: Jun 20, 2024
- *      Author: IlicAleksander
  */
 #pragma once
 

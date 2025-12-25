@@ -1,8 +1,5 @@
 /*
  * bsp_adc.h
- *
- *  Created on: Dec 25, 2025
- *      Author: GitHub Copilot
  */
 #pragma once
 

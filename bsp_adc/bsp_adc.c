@@ -1,8 +1,5 @@
 /*
  * bsp_adc.c
- *
- *  Created on: Dec 25, 2025
- *      Author: GitHub Copilot
  */
 
 #include "bsp_adc.h"
