@@ -120,7 +120,7 @@ static SPI_HandleTypeDef* sBspSpiGetHalHandle(BspSpiInstance_e eInstance)
 
 static uint8_t sBspSpiFindModuleIndex(BspSpiHandle_t handle)
 {
-    if ((handle < 0) || (handle >= BSP_SPI_MAX_INSTANCES))
+    if ((handle < 0) || (handle >= (int8_t)BSP_SPI_MAX_INSTANCES))
     {
         return BSP_SPI_MAX_INSTANCES;
     }
