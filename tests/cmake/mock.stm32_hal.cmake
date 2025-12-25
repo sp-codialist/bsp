@@ -10,12 +10,15 @@ set(${libName}_HEADERS
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_gpio.h
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_cortex.h
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal.h
+    ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_adc.h
 )
 
 # Additional HAL headers that need to be copied (dependencies)
 set(${libName}_DEPENDENCY_HEADERS
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_def.h
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_gpio_ex.h
+    ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_adc_ex.h
+    ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_dma.h
 )
 
 # Create directory for mocks
@@ -50,6 +53,11 @@ configure_file(${CMAKE_SOURCE_DIR}/tests/cmake/stm32f4xx_ll_gpio.h
                ${CMAKE_BINARY_DIR}/tests/${libName}/stm32f4xx_ll_gpio.h
                COPYONLY)
 
+# Copy stub stm32f4xx_ll_adc.h for ADC includes
+configure_file(${CMAKE_SOURCE_DIR}/tests/cmake/stm32f4xx_ll_adc.h
+               ${CMAKE_BINARY_DIR}/tests/${libName}/stm32f4xx_ll_adc.h
+               COPYONLY)
+
 # Copy main.h from cpu_precompiled_hal for production code includes (gpio_struct.c needs this)
 configure_file(${cpu_precompiled_hal_SOURCE_DIR}/include/cpb/main.h
                ${CMAKE_BINARY_DIR}/tests/${libName}/main.h
@@ -57,11 +65,14 @@ configure_file(${cpu_precompiled_hal_SOURCE_DIR}/include/cpb/main.h
 
 # Generate mocks for each header
 foreach(element IN LISTS ${libName}_HEADERS)
-    # Copy header to build directory
-    configure_file(${element} ${CMAKE_CURRENT_BINARY_DIR}/${libName} COPYONLY)
-
-    # Extract filename
+    # Extract filename first
     get_filename_component(fileName ${element} NAME)
+
+    # Skip stm32f4xx_hal.h since we use our custom stub
+    if(NOT fileName STREQUAL "stm32f4xx_hal.h")
+        # Copy header to build directory
+        configure_file(${element} ${CMAKE_CURRENT_BINARY_DIR}/${libName} COPYONLY)
+    endif()
 
     # Patch stm32f4xx_hal_gpio.h to remove duplicate GPIO_PinState definition
     if(fileName STREQUAL "stm32f4xx_hal_gpio.h")
@@ -100,6 +111,17 @@ foreach(element IN LISTS ${libName}_HEADERS)
         string(REGEX REPLACE "extern[ \t]+HAL_TickFreqTypeDef[ \t]+uwTickPrio[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
         # Remove uwTickFreq variable declaration
         string(REGEX REPLACE "extern[ \t]+HAL_TickFreqTypeDef[ \t]+uwTickFreq[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} "${FILE_CONTENTS}")
+    endif()
+
+    # Patch stm32f4xx_hal_adc.h to remove user callback and register callback functions
+    if(fileName STREQUAL "stm32f4xx_hal_adc.h")
+        file(READ ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} FILE_CONTENTS)
+        # Remove HAL_ADC_ConvCpltCallback declaration (implemented by user code, not mocked)
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_ADC_ConvCpltCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        # Remove HAL_ADC_RegisterCallback and HAL_ADC_UnRegisterCallback (not needed for tests)
+        string(REGEX REPLACE "HAL_StatusTypeDef[\r\n\t ]+HAL_ADC_RegisterCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "HAL_StatusTypeDef[\r\n\t ]+HAL_ADC_UnRegisterCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
         file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} "${FILE_CONTENTS}")
     endif()
 

@@ -73,6 +73,60 @@ typedef struct
     uint32_t dummy; /* Placeholder for host testing */
 } MPU_Region_InitTypeDef;
 
+/* ADC peripheral structure stub */
+typedef struct
+{
+    volatile uint32_t dummy; /* Placeholder for host testing */
+} ADC_TypeDef;
+
+/* ADC common peripheral structure stub */
+typedef struct
+{
+    volatile uint32_t dummy; /* Placeholder for host testing */
+} ADC_Common_TypeDef;
+
+/* DMA peripheral structure stub */
+typedef struct
+{
+    volatile uint32_t dummy; /* Placeholder for host testing */
+} DMA_TypeDef;
+
+/* DMA Stream structure stub */
+typedef struct
+{
+    volatile uint32_t dummy; /* Placeholder for host testing */
+} DMA_Stream_TypeDef;
+
+/* __IO qualifier stub */
+#ifndef __IO
+    #define __IO volatile
+#endif
+
+/* FunctionalState enum */
+typedef enum
+{
+    DISABLE = 0,
+    ENABLE  = !DISABLE
+} FunctionalState;
+
+#define IS_FUNCTIONAL_STATE(STATE) (((STATE) == DISABLE) || ((STATE) == ENABLE))
+
+/* ADC register bit definitions (for ADC channel macros) */
+#define ADC_CR1_AWDCH_0 ((uint32_t)0x00000001)
+#define ADC_CR1_AWDCH_1 ((uint32_t)0x00000002)
+#define ADC_CR1_AWDCH_2 ((uint32_t)0x00000004)
+#define ADC_CR1_AWDCH_3 ((uint32_t)0x00000008)
+#define ADC_CR1_AWDCH_4 ((uint32_t)0x00000010)
+
+/* ADC sample time register bit definitions */
+#define ADC_SMPR1_SMP10_0 ((uint32_t)0x00000001)
+#define ADC_SMPR1_SMP10_1 ((uint32_t)0x00000002)
+#define ADC_SMPR1_SMP10_2 ((uint32_t)0x00000004)
+#define ADC_SMPR1_SMP10   ((uint32_t)0x00000007)
+
+/* Forward declaration of DMA_HandleTypeDef */
+typedef struct __DMA_HandleTypeDef DMA_HandleTypeDef;
+
 /* Exported types ------------------------------------------------------------*/
 
 /**

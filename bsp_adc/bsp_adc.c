@@ -6,21 +6,38 @@
  */
 
 #include "bsp_adc.h"
+#include "bsp_compiler_attributes.h"
 #include "bsp_swtimer.h"
 #include "stm32f4xx_hal.h"
 
 #include <stddef.h>
 
+// --- External HAL Handle Declarations ---
+
+extern ADC_HandleTypeDef hadc1;
+extern ADC_HandleTypeDef hadc2;
+extern ADC_HandleTypeDef hadc3;
+
+// --- Local Types ---
+
+/**
+ * @brief ADC module structure to hold all ADC-related data
+ */
+typedef struct
+{
+    ADC_HandleTypeDef* pAdcHandle;                        /**< Pointer to HAL ADC handle */
+    BspAdcValueCb_t    aCallbacks[BSP_ADC_MAX_CHANNELS];  /**< Callback functions for each channel */
+    uint32_t           aResultData[BSP_ADC_MAX_CHANNELS]; /**< ADC conversion results */
+    SWTimerModule      timer;                             /**< Software timer for periodic sampling */
+    BspAdcErrorCb_t    pErrorCallback;                    /**< Error callback */
+    uint32_t           uChannelCount;                     /**< Number of registered channels */
+    uint32_t           uMaxChannelCount;                  /**< Maximum channels from HAL config */
+    bool               bTimerInitialized;                 /**< Timer initialization flag */
+} BspAdcModule_t;
+
 // --- Local Variables ---
 
-static ADC_HandleTypeDef* s_pAdc                                 = NULL;
-static uint32_t           s_uAdcChannelCnt                       = 0u;
-static uint32_t           s_uAdcMaxChannelCnt                    = 0u;
-static BspAdcValueCb_t    s_aAdcCallbacks[BSP_ADC_MAX_CHANNELS]  = {NULL};
-static uint32_t           s_aAdcResultData[BSP_ADC_MAX_CHANNELS] = {0};
-static SWTimerModule      s_adcTimer;
-static BspAdcErrorCb_t    s_pAdcErrorCallback = NULL;
-static bool               s_bTimerInitialized = false;
+FORCE_STATIC BspAdcModule_t s_adcModule = {0};
 
 // --- Local Function Prototypes ---
 
@@ -30,7 +47,7 @@ static bool               s_bTimerInitialized = false;
  * @param pStmChannel Pointer to store STM32 HAL channel value
  * @return true if conversion successful, false otherwise
  */
-static bool BspAdcGetStmChannelValue(BspAdcChannel_e eChannel, uint32_t* pStmChannel);
+FORCE_STATIC bool BspAdcGetStmChannelValue(BspAdcChannel_e eChannel, uint32_t* pStmChannel);
 
 /**
  * @brief Converts ADC sample time enum to STM32 HAL sample time value.
@@ -38,42 +55,51 @@ static bool BspAdcGetStmChannelValue(BspAdcChannel_e eChannel, uint32_t* pStmCha
  * @param pStmSampleTime Pointer to store STM32 HAL sample time value
  * @return true if conversion successful, false otherwise
  */
-static bool BspAdcGetStmSampleTimeValue(BspAdcSampleTime_e eSampleTime, uint32_t* pStmSampleTime);
+FORCE_STATIC bool BspAdcGetStmSampleTimeValue(BspAdcSampleTime_e eSampleTime, uint32_t* pStmSampleTime);
 
 /**
  * @brief Timer callback to trigger ADC DMA conversion.
  */
-static void BspAdcTimerCallback(void);
+FORCE_STATIC void BspAdcTimerCallback(void);
 
 /**
  * @brief Starts ADC DMA conversion.
  */
-static void BspAdcStartReadDma(void);
+FORCE_STATIC void BspAdcStartReadDma(void);
 
 // --- Public API Implementation ---
 
-bool BspAdcInit(void* pAdc)
+bool BspAdcInit(BspAdcInstance_e eAdcInstance)
 {
     bool result = false;
 
     do
     {
-        if (pAdc == NULL)
+        // Map ADC instance enum to HAL handle
+        FORCE_STATIC ADC_HandleTypeDef* const aAdcHandles[eBSP_ADC_INSTANCE_COUNT] = {
+            [eBSP_ADC_INSTANCE_1] = &hadc1, [eBSP_ADC_INSTANCE_2] = &hadc2, [eBSP_ADC_INSTANCE_3] = &hadc3};
+
+        if (eAdcInstance >= eBSP_ADC_INSTANCE_COUNT)
         {
             break;
         }
 
-        s_pAdc              = (ADC_HandleTypeDef*)pAdc;
-        s_uAdcMaxChannelCnt = s_pAdc->Init.NbrOfConversion;
+        s_adcModule.pAdcHandle = aAdcHandles[eAdcInstance];
+        if (s_adcModule.pAdcHandle == NULL)
+        {
+            break;
+        }
+
+        s_adcModule.uMaxChannelCount = s_adcModule.pAdcHandle->Init.NbrOfConversion;
 
         // Initialize timer
-        s_adcTimer.interval          = 100u; // Default, will be overridden by BspAdcStart()
-        s_adcTimer.pCallbackFunction = &BspAdcTimerCallback;
-        s_adcTimer.periodic          = true;
-        s_adcTimer.active            = false;
+        s_adcModule.timer.interval          = 100u; // Default, will be overridden by BspAdcStart()
+        s_adcModule.timer.pCallbackFunction = &BspAdcTimerCallback;
+        s_adcModule.timer.periodic          = true;
+        s_adcModule.timer.active            = false;
 
-        s_bTimerInitialized = SWTimerInit(&s_adcTimer);
-        result              = s_bTimerInitialized;
+        s_adcModule.bTimerInitialized = SWTimerInit(&s_adcModule.timer);
+        result                        = s_adcModule.bTimerInitialized;
 
     } while (false);
 
@@ -86,18 +112,18 @@ bool BspAdcRegisterChannel(BspAdcChannel_e eChannel, BspAdcSampleTime_e eSampleT
 
     do
     {
-        if (s_uAdcChannelCnt >= s_uAdcMaxChannelCnt)
+        if (s_adcModule.uChannelCount >= s_adcModule.uMaxChannelCount)
         {
             break;
         }
 
-        if (s_uAdcChannelCnt >= BSP_ADC_MAX_CHANNELS)
+        if (s_adcModule.uChannelCount >= BSP_ADC_MAX_CHANNELS)
         {
             break;
         }
 
-        s_aAdcCallbacks[s_uAdcChannelCnt] = pValueCallback;
-        s_uAdcChannelCnt++;
+        s_adcModule.aCallbacks[s_adcModule.uChannelCount] = pValueCallback;
+        s_adcModule.uChannelCount++;
 
         uint32_t uStmChannel    = 0u;
         uint32_t uStmSampleTime = 0u;
@@ -109,11 +135,11 @@ bool BspAdcRegisterChannel(BspAdcChannel_e eChannel, BspAdcSampleTime_e eSampleT
         {
             ADC_ChannelConfTypeDef sConfig = {0};
             sConfig.Channel                = uStmChannel;
-            sConfig.Rank                   = s_uAdcChannelCnt;
+            sConfig.Rank                   = s_adcModule.uChannelCount;
             sConfig.SamplingTime           = uStmSampleTime;
             sConfig.Offset                 = 0u;
 
-            HAL_StatusTypeDef status = HAL_ADC_ConfigChannel(s_pAdc, &sConfig);
+            HAL_StatusTypeDef status = HAL_ADC_ConfigChannel(s_adcModule.pAdcHandle, &sConfig);
             result                   = (status == HAL_OK);
         }
 
@@ -126,67 +152,67 @@ void BspAdcStart(uint32_t uPeriodMs)
 {
     do
     {
-        if (!s_bTimerInitialized)
+        if (!s_adcModule.bTimerInitialized)
         {
             break;
         }
 
-        if (s_uAdcChannelCnt != s_uAdcMaxChannelCnt)
+        if (s_adcModule.uChannelCount != s_adcModule.uMaxChannelCount)
         {
             // Not all channels configured in HAL were registered
-            if (s_pAdcErrorCallback != NULL)
+            if (s_adcModule.pErrorCallback != NULL)
             {
-                s_pAdcErrorCallback(eBSP_ADC_ERR_CONFIGURATION);
+                s_adcModule.pErrorCallback(eBSP_ADC_ERR_CONFIGURATION);
             }
             break;
         }
 
-        s_adcTimer.interval = uPeriodMs;
-        SWTimerStart(&s_adcTimer);
+        s_adcModule.timer.interval = uPeriodMs;
+        SWTimerStart(&s_adcModule.timer);
 
     } while (false);
 }
 
 void BspAdcStop(void)
 {
-    SWTimerStop(&s_adcTimer);
+    SWTimerStop(&s_adcModule.timer);
 }
 
 void BspAdcRegisterErrorCallback(BspAdcErrorCb_t pErrCb)
 {
-    s_pAdcErrorCallback = pErrCb;
+    s_adcModule.pErrorCallback = pErrCb;
 }
 
 // --- Local Function Implementation ---
 
-static void BspAdcTimerCallback(void)
+FORCE_STATIC void BspAdcTimerCallback(void)
 {
     BspAdcStartReadDma();
 }
 
-static void BspAdcStartReadDma(void)
+FORCE_STATIC void BspAdcStartReadDma(void)
 {
     do
     {
-        if (s_pAdc == NULL)
+        if (s_adcModule.pAdcHandle == NULL)
         {
             break;
         }
 
-        HAL_StatusTypeDef status = HAL_ADC_Start_DMA(s_pAdc, s_aAdcResultData, s_uAdcChannelCnt);
+        HAL_StatusTypeDef status = HAL_ADC_Start_DMA(s_adcModule.pAdcHandle, s_adcModule.aResultData, s_adcModule.uChannelCount);
 
         if (status != HAL_OK)
         {
-            if (s_pAdcErrorCallback != NULL)
+            if (s_adcModule.pErrorCallback != NULL)
             {
-                s_pAdcErrorCallback(eBSP_ADC_ERR_CONVERSION);
+                s_adcModule.pErrorCallback(eBSP_ADC_ERR_CONVERSION);
             }
         }
 
     } while (false);
 }
 
-static bool BspAdcGetStmChannelValue(BspAdcChannel_e eChannel, uint32_t* pStmChannel)
+FORCE_STATIC bool BspAdcGetStmChannelValue(BspAdcChannel_e eChannel, uint32_t* pStmChannel)
 {
     bool result = true;
 
@@ -258,7 +284,7 @@ static bool BspAdcGetStmChannelValue(BspAdcChannel_e eChannel, uint32_t* pStmCha
     return result;
 }
 
-static bool BspAdcGetStmSampleTimeValue(BspAdcSampleTime_e eSampleTime, uint32_t* pStmSampleTime)
+FORCE_STATIC bool BspAdcGetStmSampleTimeValue(BspAdcSampleTime_e eSampleTime, uint32_t* pStmSampleTime)
 {
     bool result = true;
 
@@ -318,11 +344,11 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
     (void)hadc;
 
     // Deliver results to user callbacks
-    for (uint8_t i = 0u; i < s_uAdcChannelCnt; i++)
+    for (uint8_t i = 0u; i < s_adcModule.uChannelCount; i++)
     {
-        if (s_aAdcCallbacks[i] != NULL)
+        if (s_adcModule.aCallbacks[i] != NULL)
         {
-            s_aAdcCallbacks[i]((uint16_t)s_aAdcResultData[i]);
+            s_adcModule.aCallbacks[i]((uint16_t)s_adcModule.aResultData[i]);
         }
     }
 }

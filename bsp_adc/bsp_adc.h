@@ -17,6 +17,17 @@ extern "C"
 #define BSP_ADC_MAX_CHANNELS 16u
 
 /**
+ * ADC instance enumeration
+ */
+typedef enum
+{
+    eBSP_ADC_INSTANCE_1 = 0u,
+    eBSP_ADC_INSTANCE_2,
+    eBSP_ADC_INSTANCE_3,
+    eBSP_ADC_INSTANCE_COUNT
+} BspAdcInstance_e;
+
+/**
  * ADC error codes
  */
 typedef enum
@@ -79,10 +90,10 @@ typedef enum
 
 /**
  * @brief Initialize ADC module.
- * @param pAdc Opaque pointer to ADC handle (ADC_HandleTypeDef*)
+ * @param eAdcInstance ADC instance to initialize (ADC1, ADC2, etc.)
  * @return true if initialization successful, false otherwise
  */
-bool BspAdcInit(void* pAdc);
+bool BspAdcInit(BspAdcInstance_e eAdcInstance);
 
 /**
  * @brief Register an ADC channel with callback.

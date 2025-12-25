@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 # Test target name
-set(DUTName bsp_led)
+set(DUTName bsp_adc)
 set(targetName test_${DUTName})
 
 project(${targetName})
@@ -11,14 +11,13 @@ set(CREATE_RUNNER_RUBY_PATH ${CMAKE_SOURCE_DIR}/tests/cmake CACHE PATH "Path to 
 
 # Test source files
 set(${targetName}_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/ut_bsp_led.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ut_bsp_adc.c
 )
 
 # Test include directories
 set(${targetName}_INCLUDE_DIR
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/../../${DUTName}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../bsp_gpio
     ${CMAKE_CURRENT_SOURCE_DIR}/../../bsp_swtimer
     ${CMAKE_BINARY_DIR}/tests/mock_stm32_hal
 )
@@ -28,8 +27,8 @@ set(UNITY_RUNNER_PATH ${CMAKE_CURRENT_BINARY_DIR}/runner)
 file(MAKE_DIRECTORY ${UNITY_RUNNER_PATH})
 execute_process(
     COMMAND ruby ${CREATE_RUNNER_RUBY_PATH}/create_runner.rb
-            ${CMAKE_CURRENT_SOURCE_DIR}/ut_bsp_led.c
-            ${UNITY_RUNNER_PATH}/ut_bsp_led_runner.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/ut_bsp_adc.c
+            ${UNITY_RUNNER_PATH}/ut_bsp_adc_runner.c
     RESULT_VARIABLE runner_result
 )
 
@@ -42,7 +41,7 @@ add_executable(${targetName})
 
 target_sources(${targetName}
     PUBLIC
-        ${UNITY_RUNNER_PATH}/ut_bsp_led_runner.c
+        ${UNITY_RUNNER_PATH}/ut_bsp_adc_runner.c
     PRIVATE
         ${${targetName}_SOURCES}
 )
@@ -54,7 +53,7 @@ target_include_directories(${targetName}
 
 target_link_libraries(${targetName}
     PUBLIC
-        bsp_led       # Links against bsp_led library which includes all dependencies
+        bsp_adc       # Links against bsp_adc library which includes all dependencies
 )
 
 # Compiler options for coverage and debugging

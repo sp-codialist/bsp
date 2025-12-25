@@ -15,13 +15,8 @@ extern "C"
 /* Include the host-compatible HAL definitions */
 #include "stm32f4xx_hal_def.h"
 
-/* GPIO function declarations (will be mocked) */
-void          HAL_GPIO_WritePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState);
-void          HAL_GPIO_TogglePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
-GPIO_PinState HAL_GPIO_ReadPin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
-
-/* NVIC function declarations (will be mocked) */
-void HAL_NVIC_EnableIRQ(IRQn_Type IRQn);
+/* Include ADC header for ADC types and functions */
+#include "stm32f4xx_hal_adc.h"
 
 /* Tick function declarations (will be mocked) */
 uint32_t HAL_GetTick(void);
