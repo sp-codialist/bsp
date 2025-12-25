@@ -24,8 +24,10 @@ ADC_HandleTypeDef hadc3;
 // Test callback tracking
 static uint16_t      s_lastAdcValue1        = 0;
 static uint16_t      s_lastAdcValue2        = 0;
+static uint16_t      s_lastAdcValue3        = 0;
 static bool          s_callback1Invoked     = false;
 static bool          s_callback2Invoked     = false;
+static bool          s_callback3Invoked     = false;
 static int           s_callbackCount        = 0;
 static BspAdcError_e s_lastError            = eBSP_ADC_ERR_NONE;
 static bool          s_errorCallbackInvoked = false;
@@ -45,6 +47,13 @@ static void TestAdcCallback2(uint16_t wValue)
     s_callbackCount++;
 }
 
+static void TestAdcCallback3(uint16_t wValue)
+{
+    s_lastAdcValue3    = wValue;
+    s_callback3Invoked = true;
+    s_callbackCount++;
+}
+
 static void TestErrorCallback(BspAdcError_e eError)
 {
     s_lastError            = eError;
@@ -55,21 +64,24 @@ static void TestErrorCallback(BspAdcError_e eError)
 // Test Fixtures
 // ============================================================================
 
+// External access to module state for test reset
+extern void BspAdcResetModuleForTest(void);
+
 void setUp(void)
 {
     // Reset callback tracking
     s_lastAdcValue1        = 0;
     s_lastAdcValue2        = 0;
+    s_lastAdcValue3        = 0;
     s_callback1Invoked     = false;
     s_callback2Invoked     = false;
+    s_callback3Invoked     = false;
     s_callbackCount        = 0;
     s_lastError            = eBSP_ADC_ERR_NONE;
     s_errorCallbackInvoked = false;
 
-    // Setup mock ADC handles
-    hadc1.Init.NbrOfConversion = 3;
-    hadc2.Init.NbrOfConversion = 2;
-    hadc3.Init.NbrOfConversion = 4;
+    // Reset module state
+    BspAdcResetModuleForTest();
 }
 
 void tearDown(void)
@@ -78,173 +90,228 @@ void tearDown(void)
 }
 
 // ============================================================================
-// Test Cases: Initialization
+// Test Cases: Channel Allocation
 // ============================================================================
 
-void test_BspAdcInit_InvalidInstance_ReturnsFalse(void)
+void test_BspAdcAllocateChannel_ValidParameters_ReturnsValidHandle(void)
 {
-    bool result = BspAdcInit(eBSP_ADC_INSTANCE_COUNT);
-    TEST_ASSERT_FALSE(result);
-}
-
-void test_BspAdcInit_ValidInstance_ADC1_ReturnsTrue(void)
-{
-    bool result = BspAdcInit(eBSP_ADC_INSTANCE_1);
-
-    TEST_ASSERT_TRUE(result);
-}
-
-void test_BspAdcInit_ValidInstance_ADC2_ReturnsTrue(void)
-{
-    bool result = BspAdcInit(eBSP_ADC_INSTANCE_2);
-
-    TEST_ASSERT_TRUE(result);
-}
-
-void test_BspAdcInit_ValidInstance_ADC3_ReturnsTrue(void)
-{
-    bool result = BspAdcInit(eBSP_ADC_INSTANCE_3);
-
-    TEST_ASSERT_TRUE(result);
-}
-
-// ============================================================================
-// Test Cases: Channel Registration
-// ============================================================================
-
-void test_BspAdcRegisterChannel_FirstChannel_Success(void)
-{
-    BspAdcInit(eBSP_ADC_INSTANCE_1);
-
     HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
     HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
 
-    bool result = BspAdcRegisterChannel(eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_3Cycles, TestAdcCallback1);
+    BspAdcChannelHandle_t handle =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_3Cycles, TestAdcCallback1);
 
-    TEST_ASSERT_TRUE(result);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, handle);
+    TEST_ASSERT_LESS_THAN(16, handle);
 }
 
-void test_BspAdcRegisterChannel_MultipleChannels_AllSucceed(void)
+void test_BspAdcAllocateChannel_InvalidInstance_ReturnsError(void)
 {
-    BspAdcInit(eBSP_ADC_INSTANCE_1);
+    BspAdcChannelHandle_t handle =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_COUNT, eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_3Cycles, TestAdcCallback1);
 
-    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
-    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
-    BspAdcRegisterChannel(eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_15Cycles, TestAdcCallback1);
-
-    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
-    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
-    BspAdcRegisterChannel(eBSP_ADC_CHANNEL_1, eBSP_ADC_SampleTime_28Cycles, TestAdcCallback2);
-
-    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
-    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
-    bool result = BspAdcRegisterChannel(eBSP_ADC_CHANNEL_2, eBSP_ADC_SampleTime_56Cycles, NULL);
-
-    TEST_ASSERT_TRUE(result);
+    TEST_ASSERT_EQUAL_INT8(-1, handle);
 }
 
-void test_BspAdcRegisterChannel_ExceedsMaxChannels_ReturnsFalse(void)
+void test_BspAdcAllocateChannel_DuplicateChannel_ReturnsError(void)
 {
-    BspAdcInit(eBSP_ADC_INSTANCE_1);
+    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
+    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
+    BspAdcChannelHandle_t handle1 =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_5, eBSP_ADC_SampleTime_15Cycles, TestAdcCallback1);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, handle1);
 
-    // Register up to max (3 channels for ADC1)
-    for (int i = 0; i < 3; i++)
+    // Try to allocate same channel on same ADC - should detect duplicate before calling HAL
+    BspAdcChannelHandle_t handle2 =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_5, eBSP_ADC_SampleTime_28Cycles, TestAdcCallback2);
+
+    TEST_ASSERT_EQUAL_INT8(-1, handle2);
+}
+
+void test_BspAdcAllocateChannel_SameChannelDifferentADC_ReturnsValidHandles(void)
+{
+    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
+    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
+    BspAdcChannelHandle_t handle1 =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_3, eBSP_ADC_SampleTime_56Cycles, TestAdcCallback1);
+
+    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc2, NULL, HAL_OK);
+    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
+    BspAdcChannelHandle_t handle2 =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_2, eBSP_ADC_CHANNEL_3, eBSP_ADC_SampleTime_84Cycles, TestAdcCallback2);
+
+    TEST_ASSERT_GREATER_OR_EQUAL(0, handle1);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, handle2);
+    TEST_ASSERT_NOT_EQUAL(handle1, handle2);
+}
+
+void test_BspAdcAllocateChannel_ExhaustAllSlots_17thReturnsError(void)
+{
+    BspAdcChannelHandle_t handles[16];
+
+    // Allocate all 16 slots
+    for (int i = 0; i < 16; i++)
     {
         HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
         HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
-        BspAdcRegisterChannel(eBSP_ADC_CHANNEL_0 + i, eBSP_ADC_SampleTime_3Cycles, NULL);
+        handles[i] = BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_0 + i, eBSP_ADC_SampleTime_3Cycles, NULL);
+        TEST_ASSERT_GREATER_OR_EQUAL(0, handles[i]);
     }
 
-    // Try to register one more - should fail
-    bool result = BspAdcRegisterChannel(eBSP_ADC_CHANNEL_3, eBSP_ADC_SampleTime_3Cycles, NULL);
-    TEST_ASSERT_FALSE(result);
+    // 17th allocation should fail without calling HAL (no free slots)
+    BspAdcChannelHandle_t overflow = BspAdcAllocateChannel(eBSP_ADC_INSTANCE_2, eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_15Cycles, NULL);
+    TEST_ASSERT_EQUAL_INT8(-1, overflow);
 }
 
-void test_BspAdcRegisterChannel_HALConfigFails_ReturnsFalse(void)
+void test_BspAdcAllocateChannel_HALConfigFails_ReturnsError(void)
 {
-    BspAdcInit(eBSP_ADC_INSTANCE_1);
-
     HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_ERROR);
     HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
 
-    bool result = BspAdcRegisterChannel(eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_3Cycles, TestAdcCallback1);
+    BspAdcChannelHandle_t handle =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_3Cycles, TestAdcCallback1);
 
-    TEST_ASSERT_FALSE(result);
+    TEST_ASSERT_EQUAL_INT8(-1, handle);
+}
+
+// ============================================================================
+// Test Cases: Free Channel
+// ============================================================================
+
+void test_BspAdcFreeChannel_ValidHandle_Succeeds(void)
+{
+    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
+    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
+    BspAdcChannelHandle_t handle =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_7, eBSP_ADC_SampleTime_112Cycles, TestAdcCallback1);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, handle);
+
+    // Should not crash
+    BspAdcFreeChannel(handle);
+}
+
+void test_BspAdcFreeChannel_InvalidHandle_DoesNothing(void)
+{
+    // Should not crash
+    BspAdcFreeChannel(-1);
+    BspAdcFreeChannel(16);
+    BspAdcFreeChannel(100);
+}
+
+void test_BspAdcFreeChannel_AllowsReallocation(void)
+{
+    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
+    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
+    BspAdcChannelHandle_t handle1 =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_10, eBSP_ADC_SampleTime_144Cycles, TestAdcCallback1);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, handle1);
+
+    // Free the channel
+    BspAdcFreeChannel(handle1);
+
+    // Should be able to allocate same channel again
+    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
+    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
+    BspAdcChannelHandle_t handle2 =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_10, eBSP_ADC_SampleTime_480Cycles, TestAdcCallback2);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, handle2);
 }
 
 // ============================================================================
 // Test Cases: Start/Stop
 // ============================================================================
 
-void test_BspAdcStart_AllChannelsRegistered_StartsTimer(void)
+void test_BspAdcStart_ValidHandle_Works(void)
 {
-    BspAdcInit(eBSP_ADC_INSTANCE_1);
-
-    // Register all 3 channels
-    for (int i = 0; i < 3; i++)
-    {
-        HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
-        HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
-        BspAdcRegisterChannel(i, eBSP_ADC_SampleTime_3Cycles, TestAdcCallback1);
-    }
-
-    BspAdcStart(500);
-
-    // Timer should now be active (tested via integration)
-}
-
-void test_BspAdcStart_NotAllChannelsRegistered_CallsErrorCallback(void)
-{
-    BspAdcInit(eBSP_ADC_INSTANCE_1);
-    BspAdcRegisterErrorCallback(TestErrorCallback);
-
-    // Register only 2 of 3 channels
     HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
     HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
-    BspAdcRegisterChannel(eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_3Cycles, NULL);
+    BspAdcChannelHandle_t handle =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_3Cycles, TestAdcCallback1);
 
-    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
-    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
-    BspAdcRegisterChannel(eBSP_ADC_CHANNEL_1, eBSP_ADC_SampleTime_3Cycles, NULL);
+    HAL_GetTick_ExpectAndReturn(0);
+    BspAdcStart(handle, 500);
 
-    BspAdcStart(100);
-
-    TEST_ASSERT_TRUE(s_errorCallbackInvoked);
-    TEST_ASSERT_EQUAL(eBSP_ADC_ERR_CONFIGURATION, s_lastError);
+    // Timer should be active (tested via integration)
 }
 
-void test_BspAdcStop_Works(void)
+void test_BspAdcStart_InvalidHandle_DoesNothing(void)
 {
-    BspAdcInit(eBSP_ADC_INSTANCE_1);
+    // Should not crash
+    BspAdcStart(-1, 100);
+    BspAdcStart(16, 200);
+}
 
-    // Register channels and start
-    for (int i = 0; i < 3; i++)
-    {
-        HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
-        HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
-        BspAdcRegisterChannel(i, eBSP_ADC_SampleTime_3Cycles, NULL);
-    }
-    BspAdcStart(100);
+void test_BspAdcStart_MultipleChannelsIndependentTimers_Works(void)
+{
+    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
+    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
+    BspAdcChannelHandle_t handle1 =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_15Cycles, TestAdcCallback1);
 
-    // Stop should work without error
-    BspAdcStop();
+    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc2, NULL, HAL_OK);
+    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
+    BspAdcChannelHandle_t handle2 =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_2, eBSP_ADC_CHANNEL_5, eBSP_ADC_SampleTime_28Cycles, TestAdcCallback2);
+
+    // Start both with different periods
+    HAL_GetTick_ExpectAndReturn(0);
+    BspAdcStart(handle1, 100);
+
+    HAL_GetTick_ExpectAndReturn(0);
+    BspAdcStart(handle2, 500);
+}
+
+void test_BspAdcStop_ValidHandle_Works(void)
+{
+    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
+    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
+    BspAdcChannelHandle_t handle =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_3Cycles, TestAdcCallback1);
+
+    HAL_GetTick_ExpectAndReturn(0);
+    BspAdcStart(handle, 100);
+
+    BspAdcStop(handle);
+}
+
+void test_BspAdcStop_InvalidHandle_DoesNothing(void)
+{
+    // Should not crash
+    BspAdcStop(-1);
+    BspAdcStop(16);
 }
 
 // ============================================================================
 // Test Cases: Error Callback
 // ============================================================================
 
-void test_BspAdcRegisterErrorCallback_Works(void)
+void test_BspAdcRegisterErrorCallback_ValidHandle_Works(void)
 {
-    BspAdcRegisterErrorCallback(TestErrorCallback);
+    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
+    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
+    BspAdcChannelHandle_t handle =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_56Cycles, TestAdcCallback1);
 
-    // Callback should be registered (tested via error scenarios)
+    BspAdcRegisterErrorCallback(handle, TestErrorCallback);
+
+    // Callback registered (tested via error scenarios)
+}
+
+void test_BspAdcRegisterErrorCallback_InvalidHandle_DoesNothing(void)
+{
+    // Should not crash
+    BspAdcRegisterErrorCallback(-1, TestErrorCallback);
+    BspAdcRegisterErrorCallback(16, TestErrorCallback);
 }
 
 void test_BspAdcRegisterErrorCallback_NullCallback_Accepted(void)
 {
-    BspAdcRegisterErrorCallback(NULL);
+    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
+    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
+    BspAdcChannelHandle_t handle =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_84Cycles, TestAdcCallback1);
 
+    BspAdcRegisterErrorCallback(handle, NULL);
     // Should not crash
 }
 
@@ -252,134 +319,208 @@ void test_BspAdcRegisterErrorCallback_NullCallback_Accepted(void)
 // Test Cases: HAL Callback
 // ============================================================================
 
-void test_HAL_ADC_ConvCpltCallback_WithADC1_CallsCallbacks(void)
+void test_HAL_ADC_ConvCpltCallback_SingleChannel_InvokesCallback(void)
 {
-    BspAdcInit(eBSP_ADC_INSTANCE_1);
-
-    // Register 2 channels with callbacks
     HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
     HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
-    BspAdcRegisterChannel(eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_3Cycles, TestAdcCallback1);
+    BspAdcChannelHandle_t handle =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_3Cycles, TestAdcCallback1);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, handle);
 
-    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
-    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
-    BspAdcRegisterChannel(eBSP_ADC_CHANNEL_1, eBSP_ADC_SampleTime_3Cycles, TestAdcCallback2);
-
-    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
-    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
-    BspAdcRegisterChannel(eBSP_ADC_CHANNEL_2, eBSP_ADC_SampleTime_3Cycles, NULL);
-
-    // Need to simulate the DMA result data getting filled
-    // Since we can't access internal arrays, we trigger a callback and see if it works
-
+    // Trigger HAL callback
     HAL_ADC_ConvCpltCallback(&hadc1);
 
-    // Callbacks should have been invoked
+    // Callback should be invoked
+    TEST_ASSERT_TRUE(s_callback1Invoked);
+}
+
+void test_HAL_ADC_ConvCpltCallback_MultipleChannelsSameADC_InvokesAllCallbacks(void)
+{
+    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
+    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
+    BspAdcChannelHandle_t handle1 =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_15Cycles, TestAdcCallback1);
+
+    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
+    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
+    BspAdcChannelHandle_t handle2 =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_5, eBSP_ADC_SampleTime_28Cycles, TestAdcCallback2);
+
+    TEST_ASSERT_GREATER_OR_EQUAL(0, handle1);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, handle2);
+
+    // Trigger HAL callback for ADC1
+    HAL_ADC_ConvCpltCallback(&hadc1);
+
+    // Both callbacks should be invoked
     TEST_ASSERT_TRUE(s_callback1Invoked);
     TEST_ASSERT_TRUE(s_callback2Invoked);
 }
 
-void test_HAL_ADC_ConvCpltCallback_WrongADC_DoesNothing(void)
+void test_HAL_ADC_ConvCpltCallback_WrongADC_DoesNotInvokeCallback(void)
 {
-    BspAdcInit(eBSP_ADC_INSTANCE_1);
-
     HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
     HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
-    BspAdcRegisterChannel(eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_3Cycles, TestAdcCallback1);
+    BspAdcChannelHandle_t handle =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_3Cycles, TestAdcCallback1);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, handle);
 
     // Call with ADC2 instead of ADC1
     HAL_ADC_ConvCpltCallback(&hadc2);
 
-    // Callback should NOT be invoked since wrong ADC
+    // Callback should NOT be invoked
     TEST_ASSERT_FALSE(s_callback1Invoked);
+}
+
+void test_HAL_ADC_ConvCpltCallback_NullCallback_DoesNotCrash(void)
+{
+    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
+    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
+    BspAdcChannelHandle_t handle = BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_3, eBSP_ADC_SampleTime_56Cycles, NULL);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, handle);
+
+    // Should not crash even with NULL callback
+    HAL_ADC_ConvCpltCallback(&hadc1);
 }
 
 // ============================================================================
 // Test Cases: Integration
 // ============================================================================
 
-void test_Integration_ADC1_CompleteWorkflow(void)
+void test_Integration_SingleChannel_CompleteWorkflow(void)
 {
-    // Initialize ADC1
-    bool initResult = BspAdcInit(eBSP_ADC_INSTANCE_1);
-    TEST_ASSERT_TRUE(initResult);
+    // Allocate channel on ADC1
+    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
+    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
+    BspAdcChannelHandle_t handle =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_84Cycles, TestAdcCallback1);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, handle);
 
     // Register error callback
-    BspAdcRegisterErrorCallback(TestErrorCallback);
-
-    // Register channels
-    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
-    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
-    bool reg1 = BspAdcRegisterChannel(eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_84Cycles, TestAdcCallback1);
-    TEST_ASSERT_TRUE(reg1);
-
-    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
-    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
-    bool reg2 = BspAdcRegisterChannel(eBSP_ADC_CHANNEL_5, eBSP_ADC_SampleTime_112Cycles, TestAdcCallback2);
-    TEST_ASSERT_TRUE(reg2);
-
-    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
-    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
-    bool reg3 = BspAdcRegisterChannel(eBSP_ADC_CHANNEL_10, eBSP_ADC_SampleTime_144Cycles, NULL);
-    TEST_ASSERT_TRUE(reg3);
+    BspAdcRegisterErrorCallback(handle, TestErrorCallback);
 
     // Start periodic sampling
-    BspAdcStart(1000);
+    HAL_GetTick_ExpectAndReturn(0);
+    BspAdcStart(handle, 1000);
 
     // Simulate ADC conversion complete
     HAL_ADC_ConvCpltCallback(&hadc1);
 
-    // Verify callbacks were invoked
+    // Verify callback was invoked
     TEST_ASSERT_TRUE(s_callback1Invoked);
-    TEST_ASSERT_TRUE(s_callback2Invoked);
 
     // Stop sampling
-    BspAdcStop();
+    BspAdcStop(handle);
+
+    // Free channel
+    BspAdcFreeChannel(handle);
 }
 
-void test_Integration_ADC2_CompleteWorkflow(void)
+void test_Integration_MultipleChannelsDifferentADCs_IndependentOperation(void)
 {
-    // Initialize ADC2
-    bool initResult = BspAdcInit(eBSP_ADC_INSTANCE_2);
-    TEST_ASSERT_TRUE(initResult);
+    // Allocate channel on ADC1
+    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
+    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
+    BspAdcChannelHandle_t handle1 =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_2, eBSP_ADC_SampleTime_112Cycles, TestAdcCallback1);
 
-    // Register 2 channels for ADC2
+    // Allocate channel on ADC2
     HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc2, NULL, HAL_OK);
     HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
-    bool reg1 = BspAdcRegisterChannel(eBSP_ADC_CHANNEL_1, eBSP_ADC_SampleTime_56Cycles, TestAdcCallback1);
-    TEST_ASSERT_TRUE(reg1);
+    BspAdcChannelHandle_t handle2 =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_2, eBSP_ADC_CHANNEL_7, eBSP_ADC_SampleTime_144Cycles, TestAdcCallback2);
 
-    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc2, NULL, HAL_OK);
+    // Allocate channel on ADC3
+    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc3, NULL, HAL_OK);
     HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
-    bool reg2 = BspAdcRegisterChannel(eBSP_ADC_CHANNEL_2, eBSP_ADC_SampleTime_84Cycles, TestAdcCallback2);
-    TEST_ASSERT_TRUE(reg2);
+    BspAdcChannelHandle_t handle3 =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_3, eBSP_ADC_CHANNEL_12, eBSP_ADC_SampleTime_480Cycles, TestAdcCallback3);
 
-    // Start and trigger conversion
-    BspAdcStart(500);
-    HAL_ADC_ConvCpltCallback(&hadc2);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, handle1);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, handle2);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, handle3);
 
+    // Start all with different periods
+    HAL_GetTick_ExpectAndReturn(0);
+    BspAdcStart(handle1, 100);
+
+    HAL_GetTick_ExpectAndReturn(0);
+    BspAdcStart(handle2, 500);
+
+    HAL_GetTick_ExpectAndReturn(0);
+    BspAdcStart(handle3, 2000);
+
+    // Trigger ADC1 - only callback1 should be invoked
+    HAL_ADC_ConvCpltCallback(&hadc1);
     TEST_ASSERT_TRUE(s_callback1Invoked);
-    TEST_ASSERT_TRUE(s_callback2Invoked);
+    TEST_ASSERT_FALSE(s_callback2Invoked);
+    TEST_ASSERT_FALSE(s_callback3Invoked);
 
-    BspAdcStop();
+    // Reset flags
+    s_callback1Invoked = false;
+    s_callback2Invoked = false;
+    s_callback3Invoked = false;
+
+    // Trigger ADC2 - only callback2 should be invoked
+    HAL_ADC_ConvCpltCallback(&hadc2);
+    TEST_ASSERT_FALSE(s_callback1Invoked);
+    TEST_ASSERT_TRUE(s_callback2Invoked);
+    TEST_ASSERT_FALSE(s_callback3Invoked);
+
+    // Reset flags
+    s_callback1Invoked = false;
+    s_callback2Invoked = false;
+    s_callback3Invoked = false;
+
+    // Trigger ADC3 - only callback3 should be invoked
+    HAL_ADC_ConvCpltCallback(&hadc3);
+    TEST_ASSERT_FALSE(s_callback1Invoked);
+    TEST_ASSERT_FALSE(s_callback2Invoked);
+    TEST_ASSERT_TRUE(s_callback3Invoked);
+
+    // Stop all
+    BspAdcStop(handle1);
+    BspAdcStop(handle2);
+    BspAdcStop(handle3);
+
+    // Free all
+    BspAdcFreeChannel(handle1);
+    BspAdcFreeChannel(handle2);
+    BspAdcFreeChannel(handle3);
 }
 
-void test_Integration_ADC3_CompleteWorkflow(void)
+void test_Integration_AllocateFreeReallocate_Works(void)
 {
-    // Initialize ADC3
-    bool initResult = BspAdcInit(eBSP_ADC_INSTANCE_3);
-    TEST_ASSERT_TRUE(initResult);
-
-    // Register all 4 channels for ADC3
-    for (int i = 0; i < 4; i++)
+    // Allocate all 16 slots
+    BspAdcChannelHandle_t handles[16];
+    for (int i = 0; i < 16; i++)
     {
-        HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc3, NULL, HAL_OK);
+        HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
         HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
-        BspAdcRegisterChannel(i, eBSP_ADC_SampleTime_480Cycles, (i < 2) ? TestAdcCallback1 : NULL);
+        handles[i] = BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_0 + i, eBSP_ADC_SampleTime_3Cycles, TestAdcCallback1);
+        TEST_ASSERT_GREATER_OR_EQUAL(0, handles[i]);
     }
 
-    BspAdcStart(2000);
-    HAL_ADC_ConvCpltCallback(&hadc3);
+    // All slots full - next allocation should fail without calling HAL
+    BspAdcChannelHandle_t overflow =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_2, eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_15Cycles, TestAdcCallback2);
+    TEST_ASSERT_EQUAL_INT8(-1, overflow);
 
-    BspAdcStop();
+    // Free a few slots
+    BspAdcFreeChannel(handles[5]);
+    BspAdcFreeChannel(handles[10]);
+    BspAdcFreeChannel(handles[15]);
+
+    // Should be able to allocate again
+    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc2, NULL, HAL_OK);
+    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
+    BspAdcChannelHandle_t newHandle1 =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_2, eBSP_ADC_CHANNEL_3, eBSP_ADC_SampleTime_28Cycles, TestAdcCallback2);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, newHandle1);
+
+    HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc3, NULL, HAL_OK);
+    HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
+    BspAdcChannelHandle_t newHandle2 =
+        BspAdcAllocateChannel(eBSP_ADC_INSTANCE_3, eBSP_ADC_CHANNEL_8, eBSP_ADC_SampleTime_56Cycles, TestAdcCallback3);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, newHandle2);
 }

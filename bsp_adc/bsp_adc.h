@@ -89,38 +89,50 @@ typedef enum
 } BspAdcSampleTime_e;
 
 /**
- * @brief Initialize ADC module.
- * @param eAdcInstance ADC instance to initialize (ADC1, ADC2, etc.)
- * @return true if initialization successful, false otherwise
+ * ADC channel handle type
+ * Valid handles are 0-15, -1 indicates invalid/error
  */
-bool BspAdcInit(BspAdcInstance_e eAdcInstance);
+typedef int8_t BspAdcChannelHandle_t;
 
 /**
- * @brief Register an ADC channel with callback.
- * @param eChannel ADC channel to register
+ * @brief Allocate and initialize an ADC channel instance.
+ * Each instance operates independently with its own timer and callback.
+ * Prevents duplicate allocation of same channel on same ADC instance.
+ * @param eAdcInstance ADC peripheral instance (ADC1, ADC2, ADC3)
+ * @param eChannel Physical ADC channel number (0-15)
  * @param eSampleTime Sample time for this channel
  * @param pValueCallback Callback to receive conversion result
- * @return true if registration successful, false otherwise
+ * @return Channel handle (0-15) on success, -1 on failure (no free slots or duplicate)
  */
-bool BspAdcRegisterChannel(BspAdcChannel_e eChannel, BspAdcSampleTime_e eSampleTime, BspAdcValueCb_t pValueCallback);
+BspAdcChannelHandle_t BspAdcAllocateChannel(BspAdcInstance_e eAdcInstance, BspAdcChannel_e eChannel, BspAdcSampleTime_e eSampleTime,
+                                            BspAdcValueCb_t pValueCallback);
 
 /**
- * @brief Start periodic ADC sampling.
- * All registered channels must match HAL configuration before calling this.
+ * @brief Free an allocated ADC channel instance.
+ * Stops the timer and releases the channel for reuse.
+ * @param handle Channel handle to free (0-15)
+ */
+void BspAdcFreeChannel(BspAdcChannelHandle_t handle);
+
+/**
+ * @brief Start periodic ADC sampling for a specific channel.
+ * @param handle Channel handle (0-15)
  * @param uPeriodMs Sampling period in milliseconds
  */
-void BspAdcStart(uint32_t uPeriodMs);
+void BspAdcStart(BspAdcChannelHandle_t handle, uint32_t uPeriodMs);
 
 /**
- * @brief Stop ADC sampling.
+ * @brief Stop ADC sampling for a specific channel.
+ * @param handle Channel handle (0-15)
  */
-void BspAdcStop(void);
+void BspAdcStop(BspAdcChannelHandle_t handle);
 
 /**
- * @brief Register error callback.
- * @param pErrCb Callback for error handling
+ * @brief Register error callback for a specific channel.
+ * @param handle Channel handle (0-15)
+ * @param pErrCb Callback for DMA error handling
  */
-void BspAdcRegisterErrorCallback(BspAdcErrorCb_t pErrCb);
+void BspAdcRegisterErrorCallback(BspAdcChannelHandle_t handle, BspAdcErrorCb_t pErrCb);
 
 #ifdef __cplusplus
 }

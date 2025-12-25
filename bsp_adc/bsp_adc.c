@@ -21,23 +21,25 @@ extern ADC_HandleTypeDef hadc3;
 // --- Local Types ---
 
 /**
- * @brief ADC module structure to hold all ADC-related data
+ * @brief ADC channel instance structure to hold single channel data
+ * @note Each instance manages one physical ADC channel independently
  */
 typedef struct
 {
-    ADC_HandleTypeDef* pAdcHandle;                        /**< Pointer to HAL ADC handle */
-    BspAdcValueCb_t    aCallbacks[BSP_ADC_MAX_CHANNELS];  /**< Callback functions for each channel */
-    uint32_t           aResultData[BSP_ADC_MAX_CHANNELS]; /**< ADC conversion results */
-    SWTimerModule      timer;                             /**< Software timer for periodic sampling */
-    BspAdcErrorCb_t    pErrorCallback;                    /**< Error callback */
-    uint32_t           uChannelCount;                     /**< Number of registered channels */
-    uint32_t           uMaxChannelCount;                  /**< Maximum channels from HAL config */
-    bool               bTimerInitialized;                 /**< Timer initialization flag */
+    ADC_HandleTypeDef* pAdcHandle;        /**< Pointer to HAL ADC handle (ADC1/ADC2/ADC3) */
+    BspAdcValueCb_t    pCallback;         /**< Callback function for conversion result */
+    uint32_t           uResultData;       /**< ADC conversion result (single value) */
+    SWTimerModule      timer;             /**< Independent software timer for periodic sampling */
+    BspAdcErrorCb_t    pErrorCallback;    /**< Error callback for DMA errors */
+    BspAdcInstance_e   eAdcInstance;      /**< ADC peripheral instance (1/2/3) */
+    BspAdcChannel_e    eChannel;          /**< Physical ADC channel number (0-15) */
+    bool               bAllocated;        /**< Allocation flag - true if instance is in use */
+    bool               bTimerInitialized; /**< Timer initialization flag */
 } BspAdcModule_t;
 
 // --- Local Variables ---
 
-FORCE_STATIC BspAdcModule_t s_adcModule = {0};
+FORCE_STATIC BspAdcModule_t s_adcModules[BSP_ADC_MAX_CHANNELS] = {0};
 
 // --- Local Function Prototypes ---
 
@@ -58,158 +60,373 @@ FORCE_STATIC bool BspAdcGetStmChannelValue(BspAdcChannel_e eChannel, uint32_t* p
 FORCE_STATIC bool BspAdcGetStmSampleTimeValue(BspAdcSampleTime_e eSampleTime, uint32_t* pStmSampleTime);
 
 /**
- * @brief Timer callback to trigger ADC DMA conversion.
+ * @brief Starts ADC DMA conversion for a specific channel instance.
+ * @param handle Channel handle (0-15)
  */
-FORCE_STATIC void BspAdcTimerCallback(void);
+FORCE_STATIC void BspAdcStartReadDma(BspAdcChannelHandle_t handle);
 
 /**
- * @brief Starts ADC DMA conversion.
+ * @brief Timer callback wrappers - one per channel instance (0-15)
+ * These static functions enable independent timer callbacks without modifying SWTimerModule
  */
-FORCE_STATIC void BspAdcStartReadDma(void);
+FORCE_STATIC void BspAdcTimerCallback0(void);
+FORCE_STATIC void BspAdcTimerCallback1(void);
+FORCE_STATIC void BspAdcTimerCallback2(void);
+FORCE_STATIC void BspAdcTimerCallback3(void);
+FORCE_STATIC void BspAdcTimerCallback4(void);
+FORCE_STATIC void BspAdcTimerCallback5(void);
+FORCE_STATIC void BspAdcTimerCallback6(void);
+FORCE_STATIC void BspAdcTimerCallback7(void);
+FORCE_STATIC void BspAdcTimerCallback8(void);
+FORCE_STATIC void BspAdcTimerCallback9(void);
+FORCE_STATIC void BspAdcTimerCallback10(void);
+FORCE_STATIC void BspAdcTimerCallback11(void);
+FORCE_STATIC void BspAdcTimerCallback12(void);
+FORCE_STATIC void BspAdcTimerCallback13(void);
+FORCE_STATIC void BspAdcTimerCallback14(void);
+FORCE_STATIC void BspAdcTimerCallback15(void);
+
+// --- Local Constants ---
+
+/**
+ * @brief Lookup table mapping channel handle to timer callback function
+ */
+FORCE_STATIC SWTimerCallbackFunction const s_timerCallbacks[BSP_ADC_MAX_CHANNELS] = {
+    BspAdcTimerCallback0,  BspAdcTimerCallback1,  BspAdcTimerCallback2,  BspAdcTimerCallback3, BspAdcTimerCallback4,  BspAdcTimerCallback5,
+    BspAdcTimerCallback6,  BspAdcTimerCallback7,  BspAdcTimerCallback8,  BspAdcTimerCallback9, BspAdcTimerCallback10, BspAdcTimerCallback11,
+    BspAdcTimerCallback12, BspAdcTimerCallback13, BspAdcTimerCallback14, BspAdcTimerCallback15};
 
 // --- Public API Implementation ---
 
-bool BspAdcInit(BspAdcInstance_e eAdcInstance)
+BspAdcChannelHandle_t BspAdcAllocateChannel(BspAdcInstance_e eAdcInstance, BspAdcChannel_e eChannel, BspAdcSampleTime_e eSampleTime,
+                                            BspAdcValueCb_t pValueCallback)
 {
-    bool result = false;
+    BspAdcChannelHandle_t handle          = -1;
+    bool                  bDuplicateFound = false;
 
     do
     {
-        // Map ADC instance enum to HAL handle
-        FORCE_STATIC ADC_HandleTypeDef* const aAdcHandles[eBSP_ADC_INSTANCE_COUNT] = {
-            [eBSP_ADC_INSTANCE_1] = &hadc1, [eBSP_ADC_INSTANCE_2] = &hadc2, [eBSP_ADC_INSTANCE_3] = &hadc3};
-
+        // Validate parameters
         if (eAdcInstance >= eBSP_ADC_INSTANCE_COUNT)
         {
             break;
         }
 
-        s_adcModule.pAdcHandle = aAdcHandles[eAdcInstance];
-        if (s_adcModule.pAdcHandle == NULL)
+        // Check for duplicate allocation (same ADC instance + same channel)
+        for (uint8_t i = 0; i < BSP_ADC_MAX_CHANNELS; i++)
+        {
+            if (s_adcModules[i].bAllocated && s_adcModules[i].eAdcInstance == eAdcInstance && s_adcModules[i].eChannel == eChannel)
+            {
+                // Duplicate detected - return error
+                bDuplicateFound = true;
+                break;
+            }
+        }
+
+        if (bDuplicateFound) // Duplicate detected, exit
         {
             break;
         }
 
-        s_adcModule.uMaxChannelCount = s_adcModule.pAdcHandle->Init.NbrOfConversion;
-
-        // Initialize timer
-        s_adcModule.timer.interval          = 100u; // Default, will be overridden by BspAdcStart()
-        s_adcModule.timer.pCallbackFunction = &BspAdcTimerCallback;
-        s_adcModule.timer.periodic          = true;
-        s_adcModule.timer.active            = false;
-
-        s_adcModule.bTimerInitialized = SWTimerInit(&s_adcModule.timer);
-        result                        = s_adcModule.bTimerInitialized;
-
-    } while (false);
-
-    return result;
-}
-
-bool BspAdcRegisterChannel(BspAdcChannel_e eChannel, BspAdcSampleTime_e eSampleTime, BspAdcValueCb_t pValueCallback)
-{
-    bool result = false;
-
-    do
-    {
-        if (s_adcModule.uChannelCount >= s_adcModule.uMaxChannelCount)
+        // Find first free slot
+        for (uint8_t i = 0; i < BSP_ADC_MAX_CHANNELS; i++)
         {
+            if (!s_adcModules[i].bAllocated)
+            {
+                handle = (BspAdcChannelHandle_t)i;
+                break;
+            }
+        }
+
+        if (handle == -1)
+        {
+            // No free slots
             break;
         }
 
-        if (s_adcModule.uChannelCount >= BSP_ADC_MAX_CHANNELS)
+        // Map ADC instance enum to HAL handle
+        FORCE_STATIC ADC_HandleTypeDef* const aAdcHandles[eBSP_ADC_INSTANCE_COUNT] = {
+            [eBSP_ADC_INSTANCE_1] = &hadc1, [eBSP_ADC_INSTANCE_2] = &hadc2, [eBSP_ADC_INSTANCE_3] = &hadc3};
+
+        BspAdcModule_t* pModule = &s_adcModules[handle];
+
+        pModule->pAdcHandle = aAdcHandles[eAdcInstance];
+        if (pModule->pAdcHandle == NULL)
         {
+            handle = -1;
             break;
         }
 
-        s_adcModule.aCallbacks[s_adcModule.uChannelCount] = pValueCallback;
-        s_adcModule.uChannelCount++;
-
+        // Configure HAL channel (Rank=1 for single-channel DMA)
         uint32_t uStmChannel    = 0u;
         uint32_t uStmSampleTime = 0u;
+        bool     result         = BspAdcGetStmChannelValue(eChannel, &uStmChannel);
+        result                  = BspAdcGetStmSampleTimeValue(eSampleTime, &uStmSampleTime) && result;
 
-        result = BspAdcGetStmChannelValue(eChannel, &uStmChannel);
-        result = BspAdcGetStmSampleTimeValue(eSampleTime, &uStmSampleTime) && result;
-
-        if (result)
+        if (!result)
         {
-            ADC_ChannelConfTypeDef sConfig = {0};
-            sConfig.Channel                = uStmChannel;
-            sConfig.Rank                   = s_adcModule.uChannelCount;
-            sConfig.SamplingTime           = uStmSampleTime;
-            sConfig.Offset                 = 0u;
-
-            HAL_StatusTypeDef status = HAL_ADC_ConfigChannel(s_adcModule.pAdcHandle, &sConfig);
-            result                   = (status == HAL_OK);
+            handle = -1;
+            break;
         }
+
+        ADC_ChannelConfTypeDef sConfig = {0};
+        sConfig.Channel                = uStmChannel;
+        sConfig.Rank                   = 1u; // Always rank 1 for single-channel mode
+        sConfig.SamplingTime           = uStmSampleTime;
+        sConfig.Offset                 = 0u;
+
+        HAL_StatusTypeDef status = HAL_ADC_ConfigChannel(pModule->pAdcHandle, &sConfig);
+        if (status != HAL_OK)
+        {
+            handle = -1;
+            break;
+        }
+
+        // Initialize timer with instance-specific callback
+        pModule->timer.interval          = 100u; // Default, will be set by BspAdcStart()
+        pModule->timer.pCallbackFunction = s_timerCallbacks[handle];
+        pModule->timer.periodic          = true;
+        pModule->timer.active            = false;
+
+        pModule->bTimerInitialized = SWTimerInit(&pModule->timer);
+        if (!pModule->bTimerInitialized)
+        {
+            handle = -1;
+            break;
+        }
+
+        // Store configuration and mark as allocated
+        pModule->eAdcInstance = eAdcInstance;
+        pModule->eChannel     = eChannel;
+        pModule->pCallback    = pValueCallback;
+        pModule->bAllocated   = true;
 
     } while (false);
 
-    return result;
+    return handle;
 }
 
-void BspAdcStart(uint32_t uPeriodMs)
+void BspAdcFreeChannel(BspAdcChannelHandle_t handle)
 {
     do
     {
-        if (!s_adcModule.bTimerInitialized)
+        // Validate handle
+        if (handle < 0 || (uint8_t)handle >= BSP_ADC_MAX_CHANNELS)
         {
             break;
         }
 
-        if (s_adcModule.uChannelCount != s_adcModule.uMaxChannelCount)
+        BspAdcModule_t* pModule = &s_adcModules[handle];
+
+        if (!pModule->bAllocated)
         {
-            // Not all channels configured in HAL were registered
-            if (s_adcModule.pErrorCallback != NULL)
-            {
-                s_adcModule.pErrorCallback(eBSP_ADC_ERR_CONFIGURATION);
-            }
             break;
         }
 
-        s_adcModule.timer.interval = uPeriodMs;
-        SWTimerStart(&s_adcModule.timer);
+        // Stop timer if running
+        if (pModule->bTimerInitialized)
+        {
+            SWTimerStop(&pModule->timer);
+        }
+
+        // Reset all fields
+        pModule->pAdcHandle        = NULL;
+        pModule->pCallback         = NULL;
+        pModule->uResultData       = 0;
+        pModule->pErrorCallback    = NULL;
+        pModule->eAdcInstance      = 0;
+        pModule->eChannel          = 0;
+        pModule->bAllocated        = false;
+        pModule->bTimerInitialized = false;
 
     } while (false);
 }
 
-void BspAdcStop(void)
+void BspAdcStart(BspAdcChannelHandle_t handle, uint32_t uPeriodMs)
 {
-    SWTimerStop(&s_adcModule.timer);
+    do
+    {
+        // Validate handle
+        if (handle < 0 || (uint8_t)handle >= BSP_ADC_MAX_CHANNELS)
+        {
+            break;
+        }
+
+        BspAdcModule_t* pModule = &s_adcModules[handle];
+
+        if (!pModule->bAllocated || !pModule->bTimerInitialized)
+        {
+            break;
+        }
+
+        pModule->timer.interval = uPeriodMs;
+        SWTimerStart(&pModule->timer);
+
+    } while (false);
 }
 
-void BspAdcRegisterErrorCallback(BspAdcErrorCb_t pErrCb)
+void BspAdcStop(BspAdcChannelHandle_t handle)
 {
-    s_adcModule.pErrorCallback = pErrCb;
+    do
+    {
+        // Validate handle
+        if (handle < 0 || (uint8_t)handle >= BSP_ADC_MAX_CHANNELS)
+        {
+            break;
+        }
+
+        BspAdcModule_t* pModule = &s_adcModules[handle];
+
+        if (!pModule->bAllocated)
+        {
+            break;
+        }
+
+        SWTimerStop(&pModule->timer);
+
+    } while (false);
+}
+
+void BspAdcRegisterErrorCallback(BspAdcChannelHandle_t handle, BspAdcErrorCb_t pErrCb)
+{
+    do
+    {
+        // Validate handle
+        if (handle < 0 || (uint8_t)handle >= BSP_ADC_MAX_CHANNELS)
+        {
+            break;
+        }
+
+        BspAdcModule_t* pModule = &s_adcModules[handle];
+
+        if (!pModule->bAllocated)
+        {
+            break;
+        }
+
+        pModule->pErrorCallback = pErrCb;
+
+    } while (false);
+}
+
+// --- Test Support Functions ---
+
+/**
+ * @brief Reset module state for unit testing
+ * @note This function should only be used in unit tests
+ */
+void BspAdcResetModuleForTest(void)
+{
+    for (uint8_t i = 0; i < BSP_ADC_MAX_CHANNELS; i++)
+    {
+        s_adcModules[i].pAdcHandle        = NULL;
+        s_adcModules[i].pCallback         = NULL;
+        s_adcModules[i].uResultData       = 0;
+        s_adcModules[i].pErrorCallback    = NULL;
+        s_adcModules[i].eAdcInstance      = 0;
+        s_adcModules[i].eChannel          = 0;
+        s_adcModules[i].bAllocated        = false;
+        s_adcModules[i].bTimerInitialized = false;
+    }
 }
 
 // --- Local Function Implementation ---
 
-FORCE_STATIC void BspAdcTimerCallback(void)
-{
-    BspAdcStartReadDma();
-}
-
-FORCE_STATIC void BspAdcStartReadDma(void)
+FORCE_STATIC void BspAdcStartReadDma(BspAdcChannelHandle_t handle)
 {
     do
     {
-        if (s_adcModule.pAdcHandle == NULL)
+        // Validate handle
+        if (handle < 0 || (uint8_t)handle >= BSP_ADC_MAX_CHANNELS)
         {
             break;
         }
 
-        HAL_StatusTypeDef status = HAL_ADC_Start_DMA(s_adcModule.pAdcHandle, s_adcModule.aResultData, s_adcModule.uChannelCount);
+        BspAdcModule_t* pModule = &s_adcModules[handle];
+
+        if (!pModule->bAllocated || pModule->pAdcHandle == NULL)
+        {
+            break;
+        }
+
+        // Start single-channel DMA conversion
+        HAL_StatusTypeDef status = HAL_ADC_Start_DMA(pModule->pAdcHandle, &pModule->uResultData, 1u);
 
         if (status != HAL_OK)
         {
-            if (s_adcModule.pErrorCallback != NULL)
+            if (pModule->pErrorCallback != NULL)
             {
-                s_adcModule.pErrorCallback(eBSP_ADC_ERR_CONVERSION);
+                pModule->pErrorCallback(eBSP_ADC_ERR_CONVERSION);
             }
         }
 
     } while (false);
+}
+
+// Timer callback wrappers - one per instance
+FORCE_STATIC void BspAdcTimerCallback0(void)
+{
+    BspAdcStartReadDma(0);
+}
+FORCE_STATIC void BspAdcTimerCallback1(void)
+{
+    BspAdcStartReadDma(1);
+}
+FORCE_STATIC void BspAdcTimerCallback2(void)
+{
+    BspAdcStartReadDma(2);
+}
+FORCE_STATIC void BspAdcTimerCallback3(void)
+{
+    BspAdcStartReadDma(3);
+}
+FORCE_STATIC void BspAdcTimerCallback4(void)
+{
+    BspAdcStartReadDma(4);
+}
+FORCE_STATIC void BspAdcTimerCallback5(void)
+{
+    BspAdcStartReadDma(5);
+}
+FORCE_STATIC void BspAdcTimerCallback6(void)
+{
+    BspAdcStartReadDma(6);
+}
+FORCE_STATIC void BspAdcTimerCallback7(void)
+{
+    BspAdcStartReadDma(7);
+}
+FORCE_STATIC void BspAdcTimerCallback8(void)
+{
+    BspAdcStartReadDma(8);
+}
+FORCE_STATIC void BspAdcTimerCallback9(void)
+{
+    BspAdcStartReadDma(9);
+}
+FORCE_STATIC void BspAdcTimerCallback10(void)
+{
+    BspAdcStartReadDma(10);
+}
+FORCE_STATIC void BspAdcTimerCallback11(void)
+{
+    BspAdcStartReadDma(11);
+}
+FORCE_STATIC void BspAdcTimerCallback12(void)
+{
+    BspAdcStartReadDma(12);
+}
+FORCE_STATIC void BspAdcTimerCallback13(void)
+{
+    BspAdcStartReadDma(13);
+}
+FORCE_STATIC void BspAdcTimerCallback14(void)
+{
+    BspAdcStartReadDma(14);
+}
+FORCE_STATIC void BspAdcTimerCallback15(void)
+{
+    BspAdcStartReadDma(15);
 }
 
 FORCE_STATIC bool BspAdcGetStmChannelValue(BspAdcChannel_e eChannel, uint32_t* pStmChannel)
@@ -337,18 +554,23 @@ FORCE_STATIC bool BspAdcGetStmSampleTimeValue(BspAdcSampleTime_e eSampleTime, ui
 /**
  * @brief HAL ADC conversion complete callback.
  * Called from ADC IRQ when DMA transfer completes.
+ * Iterates all allocated instances and invokes callbacks for matching ADC handles.
  * @param hadc ADC handle
  */
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
-    (void)hadc;
-
-    // Deliver results to user callbacks
-    for (uint8_t i = 0u; i < s_adcModule.uChannelCount; i++)
+    // Iterate all instances to find matching ADC handle(s)
+    for (uint8_t i = 0u; i < BSP_ADC_MAX_CHANNELS; i++)
     {
-        if (s_adcModule.aCallbacks[i] != NULL)
+        BspAdcModule_t* pModule = &s_adcModules[i];
+
+        if (pModule->bAllocated && pModule->pAdcHandle == hadc)
         {
-            s_adcModule.aCallbacks[i]((uint16_t)s_adcModule.aResultData[i]);
+            // Deliver result to user callback
+            if (pModule->pCallback != NULL)
+            {
+                pModule->pCallback((uint16_t)pModule->uResultData);
+            }
         }
     }
 }
