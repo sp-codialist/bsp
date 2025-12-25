@@ -97,6 +97,20 @@ typedef struct
     volatile uint32_t dummy; /* Placeholder for host testing */
 } DMA_Stream_TypeDef;
 
+/* SPI peripheral structure stub */
+typedef struct
+{
+    volatile uint32_t CR1;     /* Control register 1 */
+    volatile uint32_t CR2;     /* Control register 2 */
+    volatile uint32_t SR;      /* Status register */
+    volatile uint32_t DR;      /* Data register */
+    volatile uint32_t CRCPR;   /* CRC polynomial register */
+    volatile uint32_t RXCRCR;  /* RX CRC register */
+    volatile uint32_t TXCRCR;  /* TX CRC register */
+    volatile uint32_t I2SCFGR; /* I2S configuration register */
+    volatile uint32_t I2SPR;   /* I2S prescaler register */
+} SPI_TypeDef;
+
 /* __IO qualifier stub */
 #ifndef __IO
     #define __IO volatile
