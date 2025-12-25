@@ -1,8 +1,5 @@
 /*
  * bsp_spi.c
- *
- *  Created on: Jul 4, 2024
- *      Author: IlicAleksander
  */
 
 #include "bsp_spi.h"
