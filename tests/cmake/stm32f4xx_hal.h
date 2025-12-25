@@ -18,6 +18,9 @@ extern "C"
 /* Include ADC header for ADC types and functions */
 #include "stm32f4xx_hal_adc.h"
 
+/* Include SPI header for SPI types and functions */
+#include "stm32f4xx_hal_spi.h"
+
 /* Tick function declarations (will be mocked) */
 uint32_t HAL_GetTick(void);
 
