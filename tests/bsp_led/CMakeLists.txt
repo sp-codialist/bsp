@@ -55,8 +55,6 @@ target_include_directories(${targetName}
 target_link_libraries(${targetName}
     PUBLIC
         bsp_led       # Links against bsp_led library which includes all dependencies
-        unity         # Unity test framework
-        cmock         # CMock library
         mock_stm32_hal # Mock HAL library
 )
 
