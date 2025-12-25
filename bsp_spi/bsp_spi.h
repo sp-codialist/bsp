@@ -1,12 +1,12 @@
 /*
  * bsp_spi.h
- *
- *  Created on: Jul 4, 2024
- *      Author: IlicAleksander
  */
+#pragma once
 
-#ifndef BSPCMN_BSP_SPI_H_
-#define BSPCMN_BSP_SPI_H_
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -223,4 +223,6 @@ BspSpiError_e BspSpiReceiveDMA(BspSpiHandle_t handle, uint8_t* pRxData, uint32_t
  */
 BspSpiError_e BspSpiTransmitReceiveDMA(BspSpiHandle_t handle, const uint8_t* pTxData, uint8_t* pRxData, uint32_t uLength);
 
-#endif /* BSPCMN_BSP_SPI_H_ */
+#ifdef __cplusplus
+}
+#endif
