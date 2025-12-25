@@ -7,6 +7,12 @@ Comprehensive unit testing using Unity and CMock frameworks.
 - **bsp_led**: 100% line, 100% function, 95% branch (31 tests)
 - **bsp_gpio**: 97% line, 100% function, 97% branch
 - **bsp_swtimer**: 100% line, 100% function
+- **bsp_adc**: Coverage metrics available
+- **bsp_spi**: 98.1% line, 100% function, 96.1% branch (75 tests)
+
+### Test Dependency Graph
+
+![BSP Test Dependencies](bsp-test-host.svg)
 
 ## Quick Start
 
