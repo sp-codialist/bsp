@@ -14,7 +14,7 @@
         "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/_deps/cmake_scripts-src/toolchains/arm_none_eabi_gcc.cmake"
       },
       "environment": {
-        "COMPILER_ROOT_PATH": "/Users/sohal/gnuarm14.3"
+        "COMPILER_ROOT_PATH": "$env{HOME}/gnuarm14.3"
       },
       "generator": "Ninja"
     },
@@ -26,7 +26,7 @@
         "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/_deps/cmake_scripts-src/toolchains/llvm_clang_arm.cmake"
       },
       "environment": {
-        "COMPILER_ROOT_PATH": "/Users/sohal/atfe_20.1.0"
+        "COMPILER_ROOT_PATH": "$env{HOME}/atfe_20.1.0"
       },
       "generator": "Ninja"
     },
