@@ -1,0 +1,57 @@
+{
+  "cmakeMinimumRequired": {
+    "major": 4,
+    "minor": 0,
+    "patch": 0
+  },
+  "version": 10,
+  "include": [
+    "HiddenPresets.json"
+  ],
+  "configurePresets": [
+    {
+      "name": "host-test",
+      "hidden": true,
+      "description": "Base preset for host-based unit tests",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "ENABLE_TESTING": "ON",
+        "BUILD_TESTING": "ON"
+      }
+    },
+    {
+      "name": "bsp-test-host",
+      "description": "BSP unit tests with Unity/CMock on host",
+      "displayName": "BSP Unit Tests (Host)",
+      "inherits": [
+        "host-test",
+        "cpm"
+      ],
+      "cacheVariables": {
+        "UNITY_ENABLE": "ON",
+        "CMOCK_ENABLE": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "bsp-test-host",
+      "configurePreset": "bsp-test-host"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "bsp-test-host",
+      "configurePreset": "bsp-test-host",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    }
+  ]
+}

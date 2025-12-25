@@ -1,0 +1,99 @@
+{
+  "cmakeMinimumRequired": {
+    "major": 4,
+    "minor": 0,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "FETCHCONTENT_BASE_DIR": "${sourceDir}/_deps",
+        "FETCHCONTENT_UPDATES_DISCONNECTED": "ON"
+      },
+      "hidden": true,
+      "inherits": [
+        "versions"
+      ],
+      "name": "cpm"
+    },
+    {
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      },
+      "hidden": true,
+      "inherits": [
+        "cpm"
+      ],
+      "name": "debug"
+    },
+    {
+      "$comment": "****************************** cross compiler gcc on docker",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/_deps/cmake_scripts-src/toolchains/arm_none_eabi_gcc.cmake"
+      },
+      "environment": {
+        "COMPILER_ROOT_PATH": "/home/kdev/gnuarm14.3"
+      },
+      "generator": "Ninja",
+      "hidden": true,
+      "name": "gnuarm14.3"
+    },
+    {
+      "$comment": "****************************** cross compiler atfe on docker",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/_deps/cmake_scripts-src/toolchains/llvm_clang_arm.cmake"
+      },
+      "environment": {
+        "COMPILER_ROOT_PATH": "/home/kdev/atfe21.1"
+      },
+      "generator": "Ninja",
+      "hidden": true,
+      "name": "atfe21.1"
+    },
+    {
+      "cacheVariables": {
+        "STM32_DEVICE": "STM32F429xx",
+        "STM32_TYPE": "f4"
+      },
+      "environment": {
+        "CORTEX_TYPE": "CM4F"
+      },
+      "hidden": true,
+      "name": "mcu"
+    },
+    {
+      "cacheVariables": {
+        "UNITY_TEST_FRAMEWORK": true
+      },
+      "hidden": true,
+      "name": "unity"
+    },
+    {
+      "cacheVariables": {
+        "FIRMWARE_NAME": "CPU_BL"
+      },
+      "hidden": true,
+      "name": "bl-firmware"
+    },
+    {
+      "cacheVariables": {
+        "BOARD_TYPE": "cpb",
+        "BOARD_VERSION": "v02"
+      },
+      "description": "Base preset for CPB static lib builds",
+      "hidden": true,
+      "name": "cpb-hal"
+    },
+    {
+      "description": "Base preset for CPB BSP static lib builds",
+      "hidden": true,
+      "name": "bsp"
+    }
+  ],
+  "include": [
+    "VersionPresets.json"
+  ],
+  "version": 10
+}

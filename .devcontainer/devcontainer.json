@@ -1,0 +1,31 @@
+{
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools-extension-pack",
+        "ms-vscode.cmake-tools",
+        "me-dutour-mathieu.vscode-github-actions",
+        "mhutchie.git-graph",
+        "ms-vscode.cpptools-themes",
+        "ms-vscode.cpptools",
+        "hbenl.vscode-test-explorer",
+        "fpopescu.vscode-unity-test-adapter",
+        "marus25.cortex-debug",
+        "tintinweb.graphviz-interactive-preview",
+        "GitHub.vscode-github-actions"
+      ]
+    }
+  },
+  "image": "ghcr.io/kodezine/kdocker:latest",
+  "mounts": [
+    "source=${localEnv:HOME}/.ssh,target=/home/kdev/.ssh,type=bind,consistency=cached"
+  ],
+  "name": "kdocker-dev",
+  "postStartCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}",
+  "remoteUser": "kdev",
+  "runArgs": [
+    "--privileged",
+    "-v",
+    "/dev/bus/usb:/dev/bus/usb"
+  ]
+}

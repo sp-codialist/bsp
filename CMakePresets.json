@@ -1,0 +1,14 @@
+{
+  "cmakeMinimumRequired": {
+    "major": 4,
+    "minor": 0,
+    "patch": 0
+  },
+  "include": [
+    "CMakePresets/HiddenPresets.json",
+    "CMakePresets/VersionPresets.json",
+    "CMakePresets/BspStaticLibPreset.json",
+    "CMakePresets/UnitTestPreset.json"
+  ],
+  "version": 10
+}
