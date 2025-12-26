@@ -35,6 +35,19 @@ const gpio_t gpio_pins[eGPIO_COUNT] = {
 };
 
 /* ============================================================================
+ * Test Helper Functions
+ * ========================================================================== */
+
+/**
+ * @brief Dummy RX callback for testing callback registration
+ */
+static void sDummyRxCallback(BspCanHandle_t handle, const BspCanMessage_t* pMessage)
+{
+    (void)handle;
+    (void)pMessage;
+}
+
+/* ============================================================================
  * Test Fixtures
  * ========================================================================== */
 
@@ -193,14 +206,7 @@ void test_BspCanRegisterRxCallback_Success(void)
     BspCanHandle_t hCan = BspCanAllocate(&tConfig, NULL, NULL);
     TEST_ASSERT_NOT_EQUAL(BSP_CAN_INVALID_HANDLE, hCan);
 
-    /* Dummy callback function */
-    void rxCallback(BspCanHandle_t handle, const BspCanMessage_t* pMessage)
-    {
-        (void)handle;
-        (void)pMessage;
-    }
-
-    BspCanError_e eError = BspCanRegisterRxCallback(hCan, rxCallback);
+    BspCanError_e eError = BspCanRegisterRxCallback(hCan, sDummyRxCallback);
 
     TEST_ASSERT_EQUAL(eBSP_CAN_ERR_NONE, eError);
 }
