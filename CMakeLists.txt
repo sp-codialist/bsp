@@ -38,6 +38,7 @@ add_subdirectory (bsp_spi)
 add_subdirectory (bsp_i2c)
 add_subdirectory (bsp_can)
 add_subdirectory (bsp_pwm)
+add_subdirectory (bsp_rtc)
 
 # Include Unity/CMock when testing is enabled
 if(DEFINED BUILD_TESTING)
