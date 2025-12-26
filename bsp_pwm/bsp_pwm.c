@@ -521,14 +521,11 @@ BspPwmError_e BspPwmRegisterErrorCallback(BspPwmHandle_t handle, BspPwmErrorCb_t
     return eError;
 }
 
-return eError;
-}
-
 /* --- Private Functions --- */
 
 FORCE_STATIC BspPwmChannel_t* sBspPwmValidateHandle(BspPwmHandle_t handle)
 {
-    if (handle < 0 || handle >= BSP_PWM_MAX_CHANNELS)
+    if (handle < 0 || handle >= (int8_t)BSP_PWM_MAX_CHANNELS)
     {
         return NULL;
     }
