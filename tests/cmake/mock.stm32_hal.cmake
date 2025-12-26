@@ -13,6 +13,7 @@ set(${libName}_HEADERS
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_adc.h
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_spi.h
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_i2c.h
+    ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_can.h
 )
 
 # Additional HAL headers that need to be copied (dependencies)
@@ -22,6 +23,7 @@ set(${libName}_DEPENDENCY_HEADERS
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_adc_ex.h
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_dma.h
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_i2c_ex.h
+    ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/Legacy/stm32f4xx_hal_can_legacy.h
 )
 
 # Create directory for mocks
@@ -71,6 +73,11 @@ configure_file(${CMAKE_SOURCE_DIR}/tests/cmake/stm32f4xx_ll_i2c.h
                ${CMAKE_BINARY_DIR}/tests/${libName}/stm32f4xx_ll_i2c.h
                COPYONLY)
 
+# Copy stub stm32f4xx_hal_can.h for CAN includes (instead of the real one)
+configure_file(${CMAKE_SOURCE_DIR}/tests/cmake/stm32f4xx_hal_can.h
+               ${CMAKE_BINARY_DIR}/tests/${libName}/stm32f4xx_hal_can.h
+               COPYONLY)
+
 # Copy main.h from cpu_precompiled_hal for production code includes (gpio_struct.c needs this)
 configure_file(${cpu_precompiled_hal_SOURCE_DIR}/include/cpb/main.h
                ${CMAKE_BINARY_DIR}/tests/${libName}/main.h
@@ -81,9 +88,12 @@ foreach(element IN LISTS ${libName}_HEADERS)
     # Extract filename first
     get_filename_component(fileName ${element} NAME)
 
-    # Skip stm32f4xx_hal.h since we use our custom stub
-    if(NOT fileName STREQUAL "stm32f4xx_hal.h")
-        # Copy header to build directory
+    # Skip stm32f4xx_hal.h since we use a custom stub
+    # For stm32f4xx_hal_can.h, the custom stub is already copied above, so skip the copy here
+    if(fileName STREQUAL "stm32f4xx_hal.h")
+        continue()
+    elseif(NOT fileName STREQUAL "stm32f4xx_hal_can.h")
+        # Copy header to build directory (unless it's hal_can which is already copied as stub)
         configure_file(${element} ${CMAKE_CURRENT_BINARY_DIR}/${libName} COPYONLY)
     endif()
 
@@ -176,6 +186,55 @@ foreach(element IN LISTS ${libName}_HEADERS)
         string(REGEX REPLACE "HAL_StatusTypeDef[\r\n\t ]+HAL_I2C_UnRegisterAddrCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
         # Remove pI2C_AddrCallbackTypeDef typedef
         string(REGEX REPLACE "typedef[\r\n\t ]+void[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*pI2C_AddrCallbackTypeDef[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} "${FILE_CONTENTS}")
+    endif()
+
+    # Patch stm32f4xx_hal_can.h to remove user callbacks and add include guards for types already in hal_def.h
+    if(fileName STREQUAL "stm32f4xx_hal_can.h")
+        file(READ ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} FILE_CONTENTS)
+
+        # Add include guard before HAL_CAN_StateTypeDef enum
+        string(REGEX REPLACE "(typedef enum[\r\n\t ]*\\{[^}]*HAL_CAN_STATE_[^}]*\\}[\r\n\t ]*HAL_CAN_StateTypeDef[\r\n\t ]*;)" "#ifndef HAL_CAN_STATE_TYPEDEF\n#define HAL_CAN_STATE_TYPEDEF\n\\1\n#endif /* HAL_CAN_STATE_TYPEDEF */" FILE_CONTENTS "${FILE_CONTENTS}")
+
+        # Add include guard before CAN_HandleTypeDef
+        string(REGEX REPLACE "(#if USE_HAL_CAN_REGISTER_CALLBACKS == 1[\r\n\t ]+typedef struct __CAN_HandleTypeDef[\r\n\t ]+#else[\r\n\t ]+typedef struct[\r\n\t ]+#endif[^}]*\\}[\r\n\t ]*CAN_HandleTypeDef[\r\n\t ]*;)" "#ifndef CAN_HANDLETYPEDEF\n#define CAN_HANDLETYPEDEF\n\\1\n#endif /* CAN_HANDLETYPEDEF */" FILE_CONTENTS "${FILE_CONTENTS}")
+
+        # Add include guard before CAN_RxHeaderTypeDef
+        string(REGEX REPLACE "(typedef struct[\r\n\t ]*\\{[^}]*FilterMatchIndex[^}]*\\}[\r\n\t ]*CAN_RxHeaderTypeDef[\r\n\t ]*;)" "#ifndef CAN_RXHEADERTYPEDEF\n#define CAN_RXHEADERTYPEDEF\n\\1\n#endif /* CAN_RXHEADERTYPEDEF */" FILE_CONTENTS "${FILE_CONTENTS}")
+
+        # Add include guard before CAN_TxHeaderTypeDef
+        string(REGEX REPLACE "(typedef struct[\r\n\t ]*\\{[^}]*TransmitGlobalTime[^}]*\\}[\r\n\t ]*CAN_TxHeaderTypeDef[\r\n\t ]*;)" "#ifndef CAN_TXHEADERTYPEDEF\n#define CAN_TXHEADERTYPEDEF\n\\1\n#endif /* CAN_TXHEADERTYPEDEF */" FILE_CONTENTS "${FILE_CONTENTS}")
+
+        # Add include guard before CAN_FilterTypeDef
+        string(REGEX REPLACE "(typedef struct[\r\n\t ]*\\{[^}]*SlaveStartFilterBank[^}]*\\}[\r\n\t ]*CAN_FilterTypeDef[\r\n\t ]*;)" "#ifndef CAN_FILTERTYPEDEF\n#define CAN_FILTERTYPEDEF\n\\1\n#endif /* CAN_FILTERTYPEDEF */" FILE_CONTENTS "${FILE_CONTENTS}")
+
+        # Add include guards for error code macros
+        string(REGEX REPLACE "(#define HAL_CAN_ERROR_NONE)" "#ifndef HAL_CAN_ERROR_NONE\n\\1\n#endif" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "(#define HAL_CAN_ERROR_EWG)" "#ifndef HAL_CAN_ERROR_EWG\n\\1\n#endif" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "(#define HAL_CAN_ERROR_EPV)" "#ifndef HAL_CAN_ERROR_EPV\n\\1\n#endif" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "(#define HAL_CAN_ERROR_BOF)" "#ifndef HAL_CAN_ERROR_BOF\n\\1\n#endif" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "(#define HAL_CAN_ERROR_STF)" "#ifndef HAL_CAN_ERROR_STF\n\\1\n#endif" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "(#define HAL_CAN_ERROR_FOR)" "#ifndef HAL_CAN_ERROR_FOR\n\\1\n#endif" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "(#define HAL_CAN_ERROR_ACK)" "#ifndef HAL_CAN_ERROR_ACK\n\\1\n#endif" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "(#define HAL_CAN_ERROR_BR)" "#ifndef HAL_CAN_ERROR_BR\n\\1\n#endif" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "(#define HAL_CAN_ERROR_BD)" "#ifndef HAL_CAN_ERROR_BD\n\\1\n#endif" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "(#define HAL_CAN_ERROR_CRC)" "#ifndef HAL_CAN_ERROR_CRC\n\\1\n#endif" FILE_CONTENTS "${FILE_CONTENTS}")
+
+        # Remove HAL_CAN_RxFifo0MsgPendingCallback declaration (implemented by user code, not mocked)
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_CAN_RxFifo0MsgPendingCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        # Remove HAL_CAN_RxFifo1MsgPendingCallback declaration (implemented by user code, not mocked)
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_CAN_RxFifo1MsgPendingCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        # Remove HAL_CAN_TxMailbox0CompleteCallback declaration (implemented by user code, not mocked)
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_CAN_TxMailbox0CompleteCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        # Remove HAL_CAN_TxMailbox1CompleteCallback declaration (implemented by user code, not mocked)
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_CAN_TxMailbox1CompleteCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        # Remove HAL_CAN_TxMailbox2CompleteCallback declaration (implemented by user code, not mocked)
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_CAN_TxMailbox2CompleteCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        # Remove HAL_CAN_ErrorCallback declaration (implemented by user code, not mocked)
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_CAN_ErrorCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        # Remove HAL_CAN_RegisterCallback and HAL_CAN_UnRegisterCallback (not needed for tests)
+        string(REGEX REPLACE "HAL_StatusTypeDef[\r\n\t ]+HAL_CAN_RegisterCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "HAL_StatusTypeDef[\r\n\t ]+HAL_CAN_UnRegisterCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
         file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} "${FILE_CONTENTS}")
     endif()
 

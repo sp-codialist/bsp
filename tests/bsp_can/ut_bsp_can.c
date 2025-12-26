@@ -3,10 +3,36 @@
  * @brief Unit tests for BSP CAN module
  */
 
+#include "Mockstm32f4xx_hal_can.h"
 #include "bsp_can.h"
-#include "mock_bsp_led.h"
-#include "mock_stm32f4xx_hal_can.h"
+#include "bsp_led.h"
+#include "gpio_structs/gpio_struct.h"
 #include "unity.h"
+
+/* ============================================================================
+ * Test Stubs and Mocks
+ * ========================================================================== */
+
+/* Stub for HAL_GetTick - required by production code */
+uint32_t HAL_GetTick(void)
+{
+    static uint32_t tick = 0;
+    return tick++;
+}
+
+/* Stub CAN handles - required by production code */
+CAN_HandleTypeDef hcan1;
+CAN_HandleTypeDef hcan2;
+
+/* Mock GPIO port for testing */
+static GPIO_TypeDef mock_GPIOA;
+
+/* Stub gpio_pins array - required by bsp_led/bsp_gpio dependencies */
+const gpio_t gpio_pins[eGPIO_COUNT] = {
+    [eM_LED1] = {&mock_GPIOA, GPIO_PIN_0},
+    [eM_LED2] = {&mock_GPIOA, GPIO_PIN_1},
+    /* Remaining pins default to {NULL, 0} */
+};
 
 /* ============================================================================
  * Test Fixtures
@@ -16,13 +42,25 @@ static CAN_HandleTypeDef s_tCanHandle;
 
 void setUp(void)
 {
-    /* Initialize mock CAN handle */
+    /* Initialize global HAL CAN handles used by production code */
+    hcan1.Instance = (CAN_TypeDef*)0x40006400U; /* Mock CAN1 address */
+    hcan2.Instance = (CAN_TypeDef*)0x40006800U; /* Mock CAN2 address */
+
+    /* Initialize local test handle */
     s_tCanHandle.Instance = (CAN_TypeDef*)0x40006400U; /* Mock CAN1 address */
 }
 
 void tearDown(void)
 {
-    /* Cleanup after each test */
+    /* Ignore HAL calls during cleanup */
+    HAL_CAN_Stop_IgnoreAndReturn(HAL_OK);
+    HAL_CAN_DeactivateNotification_IgnoreAndReturn(HAL_OK);
+
+    /* Cleanup all allocated module handles to ensure clean state between tests */
+    for (int8_t i = 0; i < 2; i++) /* BSP_CAN_MAX_INSTANCES = 2 */
+    {
+        BspCanFree((BspCanHandle_t)i);
+    }
 }
 
 /* ============================================================================
@@ -34,10 +72,9 @@ void tearDown(void)
  */
 void test_BspCanAllocate_Success(void)
 {
-    BspCanConfig_t tConfig = {
-        .eInstance = eBSP_CAN_INSTANCE_1, .pHalHandle = &s_tCanHandle, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
 
-    BspCanHandle_t hCan = BspCanAllocate(&tConfig, BSP_CAN_INVALID_HANDLE, BSP_CAN_INVALID_HANDLE);
+    BspCanHandle_t hCan = BspCanAllocate(&tConfig, NULL, NULL);
 
     TEST_ASSERT_NOT_EQUAL(BSP_CAN_INVALID_HANDLE, hCan);
     TEST_ASSERT_GREATER_OR_EQUAL(0, hCan);
@@ -48,7 +85,7 @@ void test_BspCanAllocate_Success(void)
  */
 void test_BspCanAllocate_NullConfig_ReturnsInvalid(void)
 {
-    BspCanHandle_t hCan = BspCanAllocate(NULL, BSP_CAN_INVALID_HANDLE, BSP_CAN_INVALID_HANDLE);
+    BspCanHandle_t hCan = BspCanAllocate(NULL, NULL, NULL);
 
     TEST_ASSERT_EQUAL(BSP_CAN_INVALID_HANDLE, hCan);
 }
@@ -56,12 +93,11 @@ void test_BspCanAllocate_NullConfig_ReturnsInvalid(void)
 /**
  * @brief Test allocation with NULL HAL handle returns invalid handle.
  */
-void test_BspCanAllocate_NullHalHandle_ReturnsInvalid(void)
+void test_BspCanAllocate_InvalidInstance_ReturnsInvalid(void)
 {
-    BspCanConfig_t tConfig = {
-        .eInstance = eBSP_CAN_INSTANCE_1, .pHalHandle = NULL, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_COUNT, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
 
-    BspCanHandle_t hCan = BspCanAllocate(&tConfig, BSP_CAN_INVALID_HANDLE, BSP_CAN_INVALID_HANDLE);
+    BspCanHandle_t hCan = BspCanAllocate(&tConfig, NULL, NULL);
 
     TEST_ASSERT_EQUAL(BSP_CAN_INVALID_HANDLE, hCan);
 }
@@ -75,10 +111,9 @@ void test_BspCanAllocate_NullHalHandle_ReturnsInvalid(void)
  */
 void test_BspCanAddFilter_BeforeStart_Success(void)
 {
-    BspCanConfig_t tConfig = {
-        .eInstance = eBSP_CAN_INSTANCE_1, .pHalHandle = &s_tCanHandle, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
 
-    BspCanHandle_t hCan = BspCanAllocate(&tConfig, BSP_CAN_INVALID_HANDLE, BSP_CAN_INVALID_HANDLE);
+    BspCanHandle_t hCan = BspCanAllocate(&tConfig, NULL, NULL);
     TEST_ASSERT_NOT_EQUAL(BSP_CAN_INVALID_HANDLE, hCan);
 
     BspCanFilter_t tFilter = {.uFilterId = 0x100, .uFilterMask = 0x7F0, .eIdType = eBSP_CAN_ID_STANDARD, .byFifoAssignment = 0};
@@ -125,10 +160,9 @@ void test_BspCanTransmit_InvalidHandle_ReturnsError(void)
  */
 void test_BspCanTransmit_NullMessage_ReturnsError(void)
 {
-    BspCanConfig_t tConfig = {
-        .eInstance = eBSP_CAN_INSTANCE_1, .pHalHandle = &s_tCanHandle, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
 
-    BspCanHandle_t hCan = BspCanAllocate(&tConfig, BSP_CAN_INVALID_HANDLE, BSP_CAN_INVALID_HANDLE);
+    BspCanHandle_t hCan = BspCanAllocate(&tConfig, NULL, NULL);
     TEST_ASSERT_NOT_EQUAL(BSP_CAN_INVALID_HANDLE, hCan);
 
     /* Start CAN */
@@ -154,10 +188,9 @@ void test_BspCanTransmit_NullMessage_ReturnsError(void)
  */
 void test_BspCanRegisterRxCallback_Success(void)
 {
-    BspCanConfig_t tConfig = {
-        .eInstance = eBSP_CAN_INSTANCE_1, .pHalHandle = &s_tCanHandle, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
 
-    BspCanHandle_t hCan = BspCanAllocate(&tConfig, BSP_CAN_INVALID_HANDLE, BSP_CAN_INVALID_HANDLE);
+    BspCanHandle_t hCan = BspCanAllocate(&tConfig, NULL, NULL);
     TEST_ASSERT_NOT_EQUAL(BSP_CAN_INVALID_HANDLE, hCan);
 
     /* Dummy callback function */
@@ -181,10 +214,9 @@ void test_BspCanRegisterRxCallback_Success(void)
  */
 void test_BspCanGetTxQueueInfo_AfterAllocation_ReturnsEmpty(void)
 {
-    BspCanConfig_t tConfig = {
-        .eInstance = eBSP_CAN_INSTANCE_1, .pHalHandle = &s_tCanHandle, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
 
-    BspCanHandle_t hCan = BspCanAllocate(&tConfig, BSP_CAN_INVALID_HANDLE, BSP_CAN_INVALID_HANDLE);
+    BspCanHandle_t hCan = BspCanAllocate(&tConfig, NULL, NULL);
     TEST_ASSERT_NOT_EQUAL(BSP_CAN_INVALID_HANDLE, hCan);
 
     uint8_t byUsed = 0xFF;
@@ -206,10 +238,9 @@ void test_BspCanGetTxQueueInfo_AfterAllocation_ReturnsEmpty(void)
  */
 void test_BspCanFree_ValidHandle_Success(void)
 {
-    BspCanConfig_t tConfig = {
-        .eInstance = eBSP_CAN_INSTANCE_1, .pHalHandle = &s_tCanHandle, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
 
-    BspCanHandle_t hCan = BspCanAllocate(&tConfig, BSP_CAN_INVALID_HANDLE, BSP_CAN_INVALID_HANDLE);
+    BspCanHandle_t hCan = BspCanAllocate(&tConfig, NULL, NULL);
     TEST_ASSERT_NOT_EQUAL(BSP_CAN_INVALID_HANDLE, hCan);
 
     BspCanError_e eError = BspCanFree(hCan);
