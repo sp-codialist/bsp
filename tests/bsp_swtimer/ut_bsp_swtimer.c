@@ -4,9 +4,19 @@
  * @note This test file mocks HAL layer functions to test BSP SWTimer functionality
  */
 
-#include "Mockstm32f4xx_hal.h"
 #include "bsp_swtimer.h"
 #include "unity.h"
+
+/* ============================================================================
+ * HAL_GetTick Stub
+ * ========================================================================== */
+
+static uint32_t hal_tick_value = 0;
+
+uint32_t HAL_GetTick(void)
+{
+    return hal_tick_value;
+}
 
 // External declaration for HAL callback implemented in production code
 void HAL_SYSTICK_Callback(void);
@@ -138,7 +148,7 @@ void test_SWTimerStart_ValidTimer_SetsActiveAndExpiration(void)
     timer.periodic          = false;
 
     uint32_t current_tick = 1000;
-    HAL_GetTick_ExpectAndReturn(current_tick);
+    hal_tick_value        = current_tick;
 
     // Act
     bool result = SWTimerStart(&timer);
@@ -167,7 +177,7 @@ void test_SWTimerStart_PeriodicTimer_SetsActiveAndExpiration(void)
     timer.periodic          = true;
 
     uint32_t current_tick = 2000;
-    HAL_GetTick_ExpectAndReturn(current_tick);
+    hal_tick_value        = current_tick;
 
     // Act
     bool result = SWTimerStart(&timer);
@@ -254,7 +264,7 @@ void test_SWTimerProcess_NotExpired_NoCallback(void)
     timer.pCallbackFunction = test_callback;
     timer.periodic          = false;
 
-    HAL_GetTick_ExpectAndReturn(1000); // Current tick before expiration
+    hal_tick_value = 1000; // Current tick before expiration
 
     // Act
     SWTimerProcess(&timer);
@@ -274,7 +284,7 @@ void test_SWTimerProcess_OneShotExpired_CallsCallbackAndDeactivates(void)
     timer.pCallbackFunction = test_callback;
     timer.periodic          = false;
 
-    HAL_GetTick_ExpectAndReturn(1100); // Exactly at expiration
+    hal_tick_value = 1100; // Exactly at expiration
 
     // Act
     SWTimerProcess(&timer);
@@ -295,7 +305,7 @@ void test_SWTimerProcess_OneShotExpiredPastDue_CallsCallbackAndDeactivates(void)
     timer.pCallbackFunction = test_callback;
     timer.periodic          = false;
 
-    HAL_GetTick_ExpectAndReturn(1150); // Past expiration
+    hal_tick_value = 1150; // Past expiration
 
     // Act
     SWTimerProcess(&timer);
@@ -316,7 +326,7 @@ void test_SWTimerProcess_PeriodicExpired_CallsCallbackAndRestarts(void)
     timer.pCallbackFunction = test_callback;
     timer.periodic          = true;
 
-    HAL_GetTick_ExpectAndReturn(1100); // Exactly at expiration
+    hal_tick_value = 1100; // Exactly at expiration
 
     // Act
     SWTimerProcess(&timer);
@@ -338,7 +348,7 @@ void test_SWTimerProcess_ExpiredNoCallback_DeactivatesWithoutCrash(void)
     timer.pCallbackFunction = NULL; // No callback set
     timer.periodic          = false;
 
-    HAL_GetTick_ExpectAndReturn(1100);
+    hal_tick_value = 1100;
 
     // Act
     SWTimerProcess(&timer);
@@ -359,7 +369,7 @@ void test_SWTimerProcess_RolloverScenario_HandlesCorrectly(void)
     timer.periodic          = false;
 
     // Current tick is near max, expiration wrapped around
-    HAL_GetTick_ExpectAndReturn(200); // After expiration even with rollover
+    hal_tick_value = 200; // After expiration even with rollover
 
     // Act
     SWTimerProcess(&timer);
@@ -442,7 +452,7 @@ void test_SWTimerGetRemaining_ActiveNotExpired_ReturnsRemaining(void)
     timer.active        = true;
     timer.expiration    = 1100;
 
-    HAL_GetTick_ExpectAndReturn(1000);
+    hal_tick_value = 1000;
 
     // Act
     uint32_t remaining = SWTimerGetRemaining(&timer);
@@ -458,7 +468,7 @@ void test_SWTimerGetRemaining_ActiveExpired_ReturnsZero(void)
     timer.active        = true;
     timer.expiration    = 1100;
 
-    HAL_GetTick_ExpectAndReturn(1200); // Past expiration
+    hal_tick_value = 1200; // Past expiration
 
     // Act
     uint32_t remaining = SWTimerGetRemaining(&timer);
@@ -474,7 +484,7 @@ void test_SWTimerGetRemaining_ActiveExactlyExpired_ReturnsZero(void)
     timer.active        = true;
     timer.expiration    = 1100;
 
-    HAL_GetTick_ExpectAndReturn(1100); // Exactly at expiration
+    hal_tick_value = 1100; // Exactly at expiration
 
     // Act
     uint32_t remaining = SWTimerGetRemaining(&timer);
@@ -492,13 +502,11 @@ void test_HAL_SYSTICK_Callback_NoTimersRegistered_NoAction(void)
 {
     // Note: Previous tests may have registered and activated timers
     // Allow unlimited HAL_GetTick calls since we don't know how many active timers exist
-    HAL_GetTick_IgnoreAndReturn(5000); // Return a time where no timers should expire
 
     // Act - should not crash
     HAL_SYSTICK_Callback();
 
     // Assert - no crash is success
-    HAL_GetTick_StopIgnore();
 }
 
 void test_HAL_SYSTICK_Callback_ProcessesRegisteredTimers(void)
@@ -511,12 +519,12 @@ void test_HAL_SYSTICK_Callback_ProcessesRegisteredTimers(void)
 
     SWTimerInit(&timer1);
 
-    HAL_GetTick_ExpectAndReturn(1000); // For SWTimerStart
+    hal_tick_value = 1000; // For SWTimerStart
     SWTimerStart(&timer1);
 
     // The callback will process all timers - we use IgnoreAndReturn
     // to handle any active timers from previous tests
-    HAL_GetTick_IgnoreAndReturn(1100); // For processing all active timers including timer1
+    hal_tick_value = 1100; // Set time past expiration for processing
 
     // Act
     HAL_SYSTICK_Callback();
@@ -524,8 +532,6 @@ void test_HAL_SYSTICK_Callback_ProcessesRegisteredTimers(void)
     // Assert
     TEST_ASSERT_TRUE(callback_invoked);
     TEST_ASSERT_FALSE(timer1.active); // Should be deactivated after one-shot
-
-    HAL_GetTick_StopIgnore();
 }
 
 void test_HAL_SYSTICK_Callback_ProcessesMultipleTimers(void)
@@ -544,14 +550,14 @@ void test_HAL_SYSTICK_Callback_ProcessesMultipleTimers(void)
     SWTimerInit(&timer1);
     SWTimerInit(&timer2);
 
-    HAL_GetTick_ExpectAndReturn(1000); // For timer1 start
+    hal_tick_value = 1000; // For timer1 start
     SWTimerStart(&timer1);
 
-    HAL_GetTick_ExpectAndReturn(1000); // For timer2 start
+    hal_tick_value = 1000; // For timer2 start
     SWTimerStart(&timer2);
 
     // Both timers are active and will be processed along with any others
-    HAL_GetTick_IgnoreAndReturn(1100); // For processing all active timers
+    hal_tick_value = 1100; // Set time past expiration for processing
 
     // Act
     HAL_SYSTICK_Callback();
@@ -559,6 +565,4 @@ void test_HAL_SYSTICK_Callback_ProcessesMultipleTimers(void)
     // Assert
     TEST_ASSERT_TRUE(callback_invoked);
     TEST_ASSERT_TRUE(callback2_invoked);
-
-    HAL_GetTick_StopIgnore();
 }

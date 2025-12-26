@@ -4,7 +4,6 @@
  * @note This test file mocks HAL I2C dependencies to test BSP I2C functionality
  */
 
-#include "Mockstm32f4xx_hal.h"
 #include "Mockstm32f4xx_hal_i2c.h"
 #include "bsp_i2c.h"
 #include "unity.h"

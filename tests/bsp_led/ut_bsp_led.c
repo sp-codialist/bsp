@@ -4,7 +4,6 @@
  * @note This test file mocks HAL, GPIO, and SWTimer dependencies to test BSP LED functionality
  */
 
-#include "Mockstm32f4xx_hal.h"
 #include "Mockstm32f4xx_hal_cortex.h"
 #include "Mockstm32f4xx_hal_gpio.h"
 #include "bsp_led.h"
@@ -12,6 +11,17 @@
 #include "unity.h"
 #include <stdbool.h>
 #include <stdint.h>
+
+/* ============================================================================
+ * HAL_GetTick Stub
+ * ========================================================================== */
+
+static uint32_t hal_tick_value = 0;
+
+uint32_t HAL_GetTick(void)
+{
+    return hal_tick_value++;
+}
 
 // External declaration for HAL callback implemented in production code
 void HAL_SYSTICK_Callback(void);
@@ -275,7 +285,6 @@ void test_LedStart_StartsTimer(void)
 
     LedInit(&led);
 
-    HAL_GetTick_ExpectAndReturn(100);
     LedStart();
 
     // Timer should be started
