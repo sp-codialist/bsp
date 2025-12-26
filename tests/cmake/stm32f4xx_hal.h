@@ -27,6 +27,12 @@ extern "C"
 /* Include CAN header for CAN types and functions */
 #include "stm32f4xx_hal_can.h"
 
+/* Include TIM header for TIM types and functions */
+#include "stm32f4xx_hal_tim.h"
+
+/* Include RCC header for RCC types and functions */
+#include "stm32f4xx_hal_rcc.h"
+
 /* Tick function declarations (will be mocked) */
 uint32_t HAL_GetTick(void);
 

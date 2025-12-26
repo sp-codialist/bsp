@@ -10,9 +10,8 @@ include (${cmake_scripts_SOURCE_DIR}/silicon/STMicroelectronics/stm32cubexx.gpio
 
 add_library (${libName} STATIC)
 target_sources (${libName}
-    PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/${libName}.c
     PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/${libName}.c
     $<$<NOT:$<BOOL:${BUILD_TESTING}>>:${CMAKE_CURRENT_SOURCE_DIR}/gpio_structs/gpio_struct.c>
 )
 target_include_directories (${libName}

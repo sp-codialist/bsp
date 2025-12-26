@@ -14,6 +14,8 @@ set(${libName}_HEADERS
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_spi.h
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_i2c.h
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_can.h
+    ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_tim.h
+    ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_rcc.h
 )
 
 # Additional HAL headers that need to be copied (dependencies)
@@ -24,6 +26,8 @@ set(${libName}_DEPENDENCY_HEADERS
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_dma.h
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_i2c_ex.h
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/Legacy/stm32f4xx_hal_can_legacy.h
+    ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_tim_ex.h
+    ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_rcc_ex.h
 )
 
 # Create directory for mocks
@@ -71,6 +75,11 @@ configure_file(${CMAKE_SOURCE_DIR}/tests/cmake/stm32f4xx_ll_spi.h
 # Copy stub stm32f4xx_ll_i2c.h for I2C includes
 configure_file(${CMAKE_SOURCE_DIR}/tests/cmake/stm32f4xx_ll_i2c.h
                ${CMAKE_BINARY_DIR}/tests/${libName}/stm32f4xx_ll_i2c.h
+               COPYONLY)
+
+# Copy stub stm32f4xx_ll_tim.h for TIM includes
+configure_file(${CMAKE_SOURCE_DIR}/tests/cmake/stm32f4xx_ll_tim.h
+               ${CMAKE_BINARY_DIR}/tests/${libName}/stm32f4xx_ll_tim.h
                COPYONLY)
 
 # Copy stub stm32f4xx_hal_can.h for CAN includes (instead of the real one)
@@ -186,6 +195,43 @@ foreach(element IN LISTS ${libName}_HEADERS)
         string(REGEX REPLACE "HAL_StatusTypeDef[\r\n\t ]+HAL_I2C_UnRegisterAddrCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
         # Remove pI2C_AddrCallbackTypeDef typedef
         string(REGEX REPLACE "typedef[\r\n\t ]+void[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*pI2C_AddrCallbackTypeDef[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} "${FILE_CONTENTS}")
+    endif()
+
+    # Patch stm32f4xx_hal_tim.h to remove user callbacks and register callback functions
+    if(fileName STREQUAL "stm32f4xx_hal_tim.h")
+        file(READ ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} FILE_CONTENTS)
+        # Remove HAL_TIM_RegisterCallback and HAL_TIM_UnRegisterCallback (not needed for tests)
+        string(REGEX REPLACE "HAL_StatusTypeDef[\r\n\t ]+HAL_TIM_RegisterCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "HAL_StatusTypeDef[\r\n\t ]+HAL_TIM_UnRegisterCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+
+        # Add include guard before TIM_HandleTypeDef (looking for typedef struct __TIM_HandleTypeDef)
+        string(REGEX REPLACE "(typedef struct __TIM_HandleTypeDef[^}]*\\}[\r\n\t ]*TIM_HandleTypeDef[\r\n\t ]*;)" "#ifndef TIM_HANDLETYPEDEF\n#define TIM_HANDLETYPEDEF\n\\1\n#endif /* TIM_HANDLETYPEDEF */" FILE_CONTENTS "${FILE_CONTENTS}")
+
+        # Add include guards for TIM channel definitions
+        string(REGEX REPLACE "(#define TIM_CHANNEL_1[\r\n\t ]+0x00000000U)" "#ifndef TIM_CHANNEL_1\n\\1\n#endif" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "(#define TIM_CHANNEL_2[\r\n\t ]+0x00000004U)" "#ifndef TIM_CHANNEL_2\n\\1\n#endif" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "(#define TIM_CHANNEL_3[\r\n\t ]+0x00000008U)" "#ifndef TIM_CHANNEL_3\n\\1\n#endif" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "(#define TIM_CHANNEL_4[\r\n\t ]+0x0000000CU)" "#ifndef TIM_CHANNEL_4\n\\1\n#endif" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "(#define TIM_CHANNEL_ALL[\r\n\t ]+0x0000003CU)" "#ifndef TIM_CHANNEL_ALL\n\\1\n#endif" FILE_CONTENTS "${FILE_CONTENTS}")
+
+        file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} "${FILE_CONTENTS}")
+    endif()
+
+    # Patch stm32f4xx_hal_rcc.h to add include guards for types already in hal_def.h
+    if(fileName STREQUAL "stm32f4xx_hal_rcc.h")
+        file(READ ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} FILE_CONTENTS)
+
+        # Add include guard before RCC_ClkInitTypeDef
+        string(REGEX REPLACE "(typedef struct[\r\n\t ]*\\{[^}]*APB2CLKDivider[^}]*\\}[\r\n\t ]*RCC_ClkInitTypeDef[\r\n\t ]*;)" "#ifndef RCC_CLKINITTYPEDEF\n#define RCC_CLKINITTYPEDEF\n\\1\n#endif /* RCC_CLKINITTYPEDEF */" FILE_CONTENTS "${FILE_CONTENTS}")
+
+        # Add include guards for RCC clock divider definitions (match the actual format with RCC_CFGR_PPRE1_DIVx)
+        string(REGEX REPLACE "(#define RCC_HCLK_DIV1[\r\n\t ]+RCC_CFGR_[A-Z0-9_]+)" "#ifndef RCC_HCLK_DIV1\n\\1\n#endif" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "(#define RCC_HCLK_DIV2[\r\n\t ]+RCC_CFGR_[A-Z0-9_]+)" "#ifndef RCC_HCLK_DIV2\n\\1\n#endif" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "(#define RCC_HCLK_DIV4[\r\n\t ]+RCC_CFGR_[A-Z0-9_]+)" "#ifndef RCC_HCLK_DIV4\n\\1\n#endif" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "(#define RCC_HCLK_DIV8[\r\n\t ]+RCC_CFGR_[A-Z0-9_]+)" "#ifndef RCC_HCLK_DIV8\n\\1\n#endif" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "(#define RCC_HCLK_DIV16[\r\n\t ]+RCC_CFGR_[A-Z0-9_]+)" "#ifndef RCC_HCLK_DIV16\n\\1\n#endif" FILE_CONTENTS "${FILE_CONTENTS}")
+
         file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} "${FILE_CONTENTS}")
     endif()
 
