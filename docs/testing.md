@@ -4,11 +4,14 @@ Comprehensive unit testing using Unity and CMock frameworks.
 
 ## Test Coverage
 
-- **bsp_led**: 100% line, 100% function, 95% branch (31 tests)
-- **bsp_gpio**: 97% line, 100% function, 97% branch
-- **bsp_swtimer**: 100% line, 100% function
-- **bsp_adc**: Coverage metrics available
-- **bsp_spi**: 98.1% line, 100% function, 96.1% branch (75 tests)
+- **bsp_led**: 100% line, 100% function, 95% branch (35 tests)
+- **bsp_gpio**: 97% line, 100% function, 97% branch (37 tests)
+- **bsp_swtimer**: 100% line, 100% function (30 tests)
+- **bsp_adc**: 96% line, 100% function (36 tests)
+- **bsp_spi**: 98.1% line, 100% function, 96.1% branch (74 tests)
+- **bsp_i2c**: 93.3% line, 100% function, 86.8% branch (79 tests)
+
+**Total: 291 tests across 6 modules**
 
 ### Test Dependency Graph
 
@@ -52,20 +55,28 @@ void test_InternalFunction_Scenario(void) {
 
 ### State Management
 
-Always implement `tearDown()` to reset module state:
+Always implement proper `setUp()` and `tearDown()` to reset module state:
 
 ```c
-// External declarations for module state
-extern uint8_t moduleState;
-extern bool initialized;
+void setUp(void) {
+    // Reset callback tracking
+    callbackInvoked = false;
+
+    // Free all instances to ensure clean state between tests
+    for (int8_t i = 0; i < MAX_INSTANCES; i++) {
+        ModuleFree(i);
+    }
+}
 
 void tearDown(void) {
-    moduleState = 0;
-    initialized = false;
+    // Clean up after each test - free all instances
+    for (int8_t i = 0; i < MAX_INSTANCES; i++) {
+        ModuleFree(i);
+    }
 }
 ```
 
-This prevents test pollution where one test affects another.
+This prevents test pollution where one test affects another. **Important**: For modules with resource allocation (SPI, I2C, ADC), use the module's Free function rather than direct memory manipulation to ensure proper cleanup.
 
 ## Test Features
 
@@ -130,9 +141,22 @@ tests/
 ├── bsp_led/
 │   ├── ut_bsp_led.c
 │   └── CMakeLists.txt
-└── bsp_swtimer/
-    ├── ut_bsp_swtimer.c
-    └── CMakeLists.txt
+├── bsp_swtimer/
+│   ├── ut_bsp_swtimer.c
+│   └── CMakeLists.txt
+├── bsp_adc/
+│   ├── ut_bsp_adc.c
+│   └── CMakeLists.txt
+├── bsp_spi/
+│   ├── ut_bsp_spi.c
+│   └── CMakeLists.txt
+├── bsp_i2c/
+│   ├── ut_bsp_i2c.c
+│   └── CMakeLists.txt
+└── cmake/
+    ├── mock.stm32_hal.cmake
+    ├── host.hal_def.h
+    └── stm32f4xx_hal.h
 ```
 
 ## Coverage Goals
