@@ -18,10 +18,7 @@ target_include_directories (${libName}
 
 target_link_libraries (${libName}
     PUBLIC
-    bsp_common
     bsp_led
-    bsp_gpio
-    bsp_swtimer
     $<$<BOOL:${BUILD_TESTING}>:mock_stm32_hal>
     PRIVATE
     $<$<NOT:$<BOOL:${BUILD_TESTING}>>:${CPB_LIBRARIES}>
