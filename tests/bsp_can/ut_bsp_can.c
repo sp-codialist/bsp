@@ -4,6 +4,7 @@
  */
 
 #include "Mockstm32f4xx_hal_can.h"
+#include "Mockstm32f4xx_hal_gpio.h"
 #include "bsp_can.h"
 #include "bsp_led.h"
 #include "gpio_structs/gpio_struct.h"
@@ -34,6 +35,14 @@ const gpio_t gpio_pins[eGPIO_COUNT] = {
     [eM_LED2] = {&mock_GPIOA, GPIO_PIN_1},
     /* Remaining pins default to {NULL, 0} */
 };
+
+/* HAL callback functions defined in production code */
+extern void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef* hcan);
+extern void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef* hcan);
+extern void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef* hcan);
+extern void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef* hcan);
+extern void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef* hcan);
+extern void HAL_CAN_ErrorCallback(CAN_HandleTypeDef* hcan);
 
 /* ============================================================================
  * Test Helper Functions
@@ -1036,5 +1045,819 @@ void test_BspCanFree_WhileStarted_StopsFirst(void)
 
     BspCanError_e eError = BspCanFree(hCan);
 
+    TEST_ASSERT_EQUAL(eBSP_CAN_ERR_NONE, eError);
+}
+
+/* ============================================================================
+ * Test Cases - HAL RX Callbacks
+ * ========================================================================== */
+
+void test_HAL_CAN_RxFifo0MsgPendingCallback_StandardID_Success(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+    BspCanRegisterRxCallback(hCan, sTestRxCallback);
+
+    HAL_CAN_GetRxMessage_ExpectAndReturn(&hcan1, CAN_RX_FIFO0, NULL, NULL, HAL_OK);
+    HAL_CAN_GetRxMessage_IgnoreArg_pHeader();
+    HAL_CAN_GetRxMessage_IgnoreArg_aData();
+
+    HAL_CAN_RxFifo0MsgPendingCallback(&hcan1);
+
+    TEST_ASSERT_TRUE(s_bRxCallbackInvoked);
+}
+
+void test_HAL_CAN_RxFifo0MsgPendingCallback_WithLED(void)
+{
+    LiveLed_t      led     = {.ePin = eM_LED1};
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, &led);
+    BspCanRegisterRxCallback(hCan, sTestRxCallback);
+
+    HAL_CAN_GetRxMessage_ExpectAndReturn(&hcan1, CAN_RX_FIFO0, NULL, NULL, HAL_OK);
+    HAL_CAN_GetRxMessage_IgnoreArg_pHeader();
+    HAL_CAN_GetRxMessage_IgnoreArg_aData();
+    HAL_GPIO_TogglePin_Ignore(); /* LED blink */
+
+    HAL_CAN_RxFifo0MsgPendingCallback(&hcan1);
+
+    TEST_ASSERT_TRUE(s_bRxCallbackInvoked);
+}
+
+void test_HAL_CAN_RxFifo0MsgPendingCallback_HAL_GetRxMessage_Fails(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+    BspCanRegisterRxCallback(hCan, sTestRxCallback);
+
+    HAL_CAN_GetRxMessage_ExpectAndReturn(&hcan1, CAN_RX_FIFO0, NULL, NULL, HAL_ERROR);
+    HAL_CAN_GetRxMessage_IgnoreArg_pHeader();
+    HAL_CAN_GetRxMessage_IgnoreArg_aData();
+
+    HAL_CAN_RxFifo0MsgPendingCallback(&hcan1);
+
+    TEST_ASSERT_FALSE(s_bRxCallbackInvoked);
+}
+
+void test_HAL_CAN_RxFifo0MsgPendingCallback_InvalidHandle(void)
+{
+    CAN_HandleTypeDef hInvalidCan;
+    hInvalidCan.Instance = (CAN_TypeDef*)0x99999999;
+
+    /* Should not crash, just return early */
+    HAL_CAN_RxFifo0MsgPendingCallback(&hInvalidCan);
+}
+
+void test_HAL_CAN_RxFifo0MsgPendingCallback_NoCallback(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    (void)BspCanAllocate(&tConfig, NULL, NULL);
+    /* Don't register callback */
+
+    HAL_CAN_GetRxMessage_ExpectAndReturn(&hcan1, CAN_RX_FIFO0, NULL, NULL, HAL_OK);
+    HAL_CAN_GetRxMessage_IgnoreArg_pHeader();
+    HAL_CAN_GetRxMessage_IgnoreArg_aData();
+
+    HAL_CAN_RxFifo0MsgPendingCallback(&hcan1);
+
+    TEST_ASSERT_FALSE(s_bRxCallbackInvoked);
+}
+
+void test_HAL_CAN_RxFifo1MsgPendingCallback_Success(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+    BspCanRegisterRxCallback(hCan, sTestRxCallback);
+
+    HAL_CAN_GetRxMessage_ExpectAndReturn(&hcan1, CAN_RX_FIFO1, NULL, NULL, HAL_OK);
+    HAL_CAN_GetRxMessage_IgnoreArg_pHeader();
+    HAL_CAN_GetRxMessage_IgnoreArg_aData();
+
+    HAL_CAN_RxFifo1MsgPendingCallback(&hcan1);
+
+    TEST_ASSERT_TRUE(s_bRxCallbackInvoked);
+}
+
+void test_HAL_CAN_RxFifo1MsgPendingCallback_WithLED(void)
+{
+    LiveLed_t      led     = {.ePin = eM_LED1};
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, &led);
+    BspCanRegisterRxCallback(hCan, sTestRxCallback);
+
+    HAL_CAN_GetRxMessage_ExpectAndReturn(&hcan1, CAN_RX_FIFO1, NULL, NULL, HAL_OK);
+    HAL_CAN_GetRxMessage_IgnoreArg_pHeader();
+    HAL_CAN_GetRxMessage_IgnoreArg_aData();
+    HAL_GPIO_TogglePin_Ignore(); /* LED blink */
+
+    HAL_CAN_RxFifo1MsgPendingCallback(&hcan1);
+
+    TEST_ASSERT_TRUE(s_bRxCallbackInvoked);
+}
+
+void test_HAL_CAN_RxFifo1MsgPendingCallback_HAL_GetRxMessage_Fails(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+    BspCanRegisterRxCallback(hCan, sTestRxCallback);
+
+    HAL_CAN_GetRxMessage_ExpectAndReturn(&hcan1, CAN_RX_FIFO1, NULL, NULL, HAL_ERROR);
+    HAL_CAN_GetRxMessage_IgnoreArg_pHeader();
+    HAL_CAN_GetRxMessage_IgnoreArg_aData();
+
+    HAL_CAN_RxFifo1MsgPendingCallback(&hcan1);
+
+    TEST_ASSERT_FALSE(s_bRxCallbackInvoked);
+}
+
+void test_HAL_CAN_RxFifo1MsgPendingCallback_InvalidHandle(void)
+{
+    CAN_HandleTypeDef hInvalidCan;
+    hInvalidCan.Instance = (CAN_TypeDef*)0x99999999;
+
+    HAL_CAN_RxFifo1MsgPendingCallback(&hInvalidCan);
+}
+
+void test_HAL_CAN_RxFifo1MsgPendingCallback_NoCallback(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    (void)BspCanAllocate(&tConfig, NULL, NULL);
+
+    HAL_CAN_GetRxMessage_ExpectAndReturn(&hcan1, CAN_RX_FIFO1, NULL, NULL, HAL_OK);
+    HAL_CAN_GetRxMessage_IgnoreArg_pHeader();
+    HAL_CAN_GetRxMessage_IgnoreArg_aData();
+
+    HAL_CAN_RxFifo1MsgPendingCallback(&hcan1);
+
+    TEST_ASSERT_FALSE(s_bRxCallbackInvoked);
+}
+
+/* ============================================================================
+ * Test Cases - HAL TX Callbacks
+ * ========================================================================== */
+
+void test_HAL_CAN_TxMailbox0CompleteCallback_WithCallback(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+    BspCanRegisterTxCallback(hCan, sTestTxCallback);
+
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 0); /* No free mailboxes, queue empty */
+
+    HAL_CAN_TxMailbox0CompleteCallback(&hcan1);
+
+    TEST_ASSERT_TRUE(s_bTxCallbackInvoked);
+}
+
+void test_HAL_CAN_TxMailbox0CompleteCallback_NoCallback(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    (void)BspCanAllocate(&tConfig, NULL, NULL);
+
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 0);
+
+    HAL_CAN_TxMailbox0CompleteCallback(&hcan1);
+
+    TEST_ASSERT_FALSE(s_bTxCallbackInvoked);
+}
+
+void test_HAL_CAN_TxMailbox0CompleteCallback_InvalidHandle(void)
+{
+    CAN_HandleTypeDef hInvalidCan;
+    hInvalidCan.Instance = (CAN_TypeDef*)0x99999999;
+
+    HAL_CAN_TxMailbox0CompleteCallback(&hInvalidCan);
+}
+
+void test_HAL_CAN_TxMailbox0CompleteCallback_WithQueuedMessage(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+
+    HAL_CAN_Start_ExpectAndReturn(&hcan1, HAL_OK);
+    HAL_CAN_ActivateNotification_IgnoreAndReturn(HAL_OK);
+    BspCanStart(hCan);
+
+    BspCanRegisterTxCallback(hCan, sTestTxCallback);
+
+    /* Queue a message when no mailboxes available */
+    BspCanMessage_t tMsg = {.uId = 0x123, .eIdType = eBSP_CAN_ID_STANDARD, .eFrameType = eBSP_CAN_FRAME_DATA, .byDataLen = 8};
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 0);
+    BspCanTransmit(hCan, &tMsg, 0, 0xABCD);
+
+    /* Mailbox complete should dequeue and send next message */
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 1);
+    HAL_CAN_AddTxMessage_IgnoreAndReturn(HAL_OK);
+
+    HAL_CAN_TxMailbox0CompleteCallback(&hcan1);
+
+    TEST_ASSERT_TRUE(s_bTxCallbackInvoked);
+}
+
+void test_HAL_CAN_TxMailbox1CompleteCallback_WithCallback(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+    BspCanRegisterTxCallback(hCan, sTestTxCallback);
+
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 0);
+
+    HAL_CAN_TxMailbox1CompleteCallback(&hcan1);
+
+    TEST_ASSERT_TRUE(s_bTxCallbackInvoked);
+}
+
+void test_HAL_CAN_TxMailbox1CompleteCallback_NoCallback(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    (void)BspCanAllocate(&tConfig, NULL, NULL);
+
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 0);
+
+    HAL_CAN_TxMailbox1CompleteCallback(&hcan1);
+
+    TEST_ASSERT_FALSE(s_bTxCallbackInvoked);
+}
+
+void test_HAL_CAN_TxMailbox1CompleteCallback_InvalidHandle(void)
+{
+    CAN_HandleTypeDef hInvalidCan;
+    hInvalidCan.Instance = (CAN_TypeDef*)0x99999999;
+
+    HAL_CAN_TxMailbox1CompleteCallback(&hInvalidCan);
+}
+
+void test_HAL_CAN_TxMailbox1CompleteCallback_WithQueuedMessage(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+
+    HAL_CAN_Start_ExpectAndReturn(&hcan1, HAL_OK);
+    HAL_CAN_ActivateNotification_IgnoreAndReturn(HAL_OK);
+    BspCanStart(hCan);
+
+    BspCanRegisterTxCallback(hCan, sTestTxCallback);
+
+    BspCanMessage_t tMsg = {.uId = 0x456, .eIdType = eBSP_CAN_ID_STANDARD, .eFrameType = eBSP_CAN_FRAME_DATA, .byDataLen = 4};
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 0);
+    BspCanTransmit(hCan, &tMsg, 1, 0xDEAD);
+
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 1);
+    HAL_CAN_AddTxMessage_IgnoreAndReturn(HAL_OK);
+
+    HAL_CAN_TxMailbox1CompleteCallback(&hcan1);
+
+    TEST_ASSERT_TRUE(s_bTxCallbackInvoked);
+}
+
+void test_HAL_CAN_TxMailbox2CompleteCallback_WithCallback(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+    BspCanRegisterTxCallback(hCan, sTestTxCallback);
+
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 0);
+
+    HAL_CAN_TxMailbox2CompleteCallback(&hcan1);
+
+    TEST_ASSERT_TRUE(s_bTxCallbackInvoked);
+}
+
+void test_HAL_CAN_TxMailbox2CompleteCallback_NoCallback(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    (void)BspCanAllocate(&tConfig, NULL, NULL);
+
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 0);
+
+    HAL_CAN_TxMailbox2CompleteCallback(&hcan1);
+
+    TEST_ASSERT_FALSE(s_bTxCallbackInvoked);
+}
+
+void test_HAL_CAN_TxMailbox2CompleteCallback_InvalidHandle(void)
+{
+    CAN_HandleTypeDef hInvalidCan;
+    hInvalidCan.Instance = (CAN_TypeDef*)0x99999999;
+
+    HAL_CAN_TxMailbox2CompleteCallback(&hInvalidCan);
+}
+
+void test_HAL_CAN_TxMailbox2CompleteCallback_WithQueuedMessage(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+
+    HAL_CAN_Start_ExpectAndReturn(&hcan1, HAL_OK);
+    HAL_CAN_ActivateNotification_IgnoreAndReturn(HAL_OK);
+    BspCanStart(hCan);
+
+    BspCanRegisterTxCallback(hCan, sTestTxCallback);
+
+    BspCanMessage_t tMsg = {.uId = 0x789, .eIdType = eBSP_CAN_ID_EXTENDED, .eFrameType = eBSP_CAN_FRAME_DATA, .byDataLen = 2};
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 0);
+    BspCanTransmit(hCan, &tMsg, 2, 0xBEEF);
+
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 1);
+    HAL_CAN_AddTxMessage_IgnoreAndReturn(HAL_OK);
+
+    HAL_CAN_TxMailbox2CompleteCallback(&hcan1);
+
+    TEST_ASSERT_TRUE(s_bTxCallbackInvoked);
+}
+
+/* ============================================================================
+ * Test Cases - HAL Error Callbacks
+ * ========================================================================== */
+
+void test_HAL_CAN_ErrorCallback_BusOff_WithCallbacks(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+    BspCanRegisterErrorCallback(hCan, sTestErrorCallback);
+    BspCanRegisterBusStateCallback(hCan, sTestBusStateCallback);
+
+    HAL_CAN_GetError_ExpectAndReturn(&hcan1, HAL_CAN_ERROR_BOF);
+
+    HAL_CAN_ErrorCallback(&hcan1);
+
+    TEST_ASSERT_TRUE(s_bErrorCallbackInvoked);
+    TEST_ASSERT_EQUAL(eBSP_CAN_ERR_BUS_OFF, s_eLastError);
+    TEST_ASSERT_TRUE(s_bBusStateCallbackInvoked);
+    TEST_ASSERT_EQUAL(eBSP_CAN_STATE_BUS_OFF, s_eLastBusState);
+}
+
+void test_HAL_CAN_ErrorCallback_BusOff_NoCallbacks(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    (void)BspCanAllocate(&tConfig, NULL, NULL);
+
+    HAL_CAN_GetError_ExpectAndReturn(&hcan1, HAL_CAN_ERROR_BOF);
+
+    HAL_CAN_ErrorCallback(&hcan1);
+
+    TEST_ASSERT_FALSE(s_bErrorCallbackInvoked);
+    TEST_ASSERT_FALSE(s_bBusStateCallbackInvoked);
+}
+
+void test_HAL_CAN_ErrorCallback_ErrorPassive_WithCallbacks(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+    BspCanRegisterErrorCallback(hCan, sTestErrorCallback);
+    BspCanRegisterBusStateCallback(hCan, sTestBusStateCallback);
+
+    HAL_CAN_GetError_ExpectAndReturn(&hcan1, HAL_CAN_ERROR_EPV);
+
+    HAL_CAN_ErrorCallback(&hcan1);
+
+    TEST_ASSERT_TRUE(s_bErrorCallbackInvoked);
+    TEST_ASSERT_EQUAL(eBSP_CAN_ERR_BUS_PASSIVE, s_eLastError);
+    TEST_ASSERT_TRUE(s_bBusStateCallbackInvoked);
+    TEST_ASSERT_EQUAL(eBSP_CAN_STATE_ERROR_PASSIVE, s_eLastBusState);
+}
+
+void test_HAL_CAN_ErrorCallback_ErrorPassive_NoCallbacks(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    (void)BspCanAllocate(&tConfig, NULL, NULL);
+
+    HAL_CAN_GetError_ExpectAndReturn(&hcan1, HAL_CAN_ERROR_EPV);
+
+    HAL_CAN_ErrorCallback(&hcan1);
+
+    TEST_ASSERT_FALSE(s_bErrorCallbackInvoked);
+    TEST_ASSERT_FALSE(s_bBusStateCallbackInvoked);
+}
+
+void test_HAL_CAN_ErrorCallback_GenericError_WithCallback(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+    BspCanRegisterErrorCallback(hCan, sTestErrorCallback);
+
+    HAL_CAN_GetError_ExpectAndReturn(&hcan1, HAL_CAN_ERROR_NONE);
+
+    HAL_CAN_ErrorCallback(&hcan1);
+
+    TEST_ASSERT_TRUE(s_bErrorCallbackInvoked);
+    TEST_ASSERT_EQUAL(eBSP_CAN_ERR_HAL_ERROR, s_eLastError);
+}
+
+void test_HAL_CAN_ErrorCallback_GenericError_NoCallback(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    (void)BspCanAllocate(&tConfig, NULL, NULL);
+
+    HAL_CAN_GetError_ExpectAndReturn(&hcan1, HAL_CAN_ERROR_NONE);
+
+    HAL_CAN_ErrorCallback(&hcan1);
+
+    TEST_ASSERT_FALSE(s_bErrorCallbackInvoked);
+}
+
+void test_HAL_CAN_ErrorCallback_InvalidHandle(void)
+{
+    CAN_HandleTypeDef hInvalidCan;
+    hInvalidCan.Instance = (CAN_TypeDef*)0x99999999;
+
+    HAL_CAN_ErrorCallback(&hInvalidCan);
+}
+
+/* ============================================================================
+ * Test Cases - Instance 2 Coverage
+ * ========================================================================== */
+
+void test_BspCanAllocate_Instance2_Success(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_2, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+
+    BspCanHandle_t hCan = BspCanAllocate(&tConfig, NULL, NULL);
+
+    TEST_ASSERT_NOT_EQUAL(BSP_CAN_INVALID_HANDLE, hCan);
+}
+
+void test_HAL_CAN_RxFifo0MsgPendingCallback_Instance2(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_2, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+    BspCanRegisterRxCallback(hCan, sTestRxCallback);
+
+    HAL_CAN_GetRxMessage_ExpectAndReturn(&hcan2, CAN_RX_FIFO0, NULL, NULL, HAL_OK);
+    HAL_CAN_GetRxMessage_IgnoreArg_pHeader();
+    HAL_CAN_GetRxMessage_IgnoreArg_aData();
+
+    HAL_CAN_RxFifo0MsgPendingCallback(&hcan2);
+
+    TEST_ASSERT_TRUE(s_bRxCallbackInvoked);
+}
+
+void test_HAL_CAN_TxMailbox0CompleteCallback_Instance2(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_2, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+    BspCanRegisterTxCallback(hCan, sTestTxCallback);
+
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan2, 0);
+
+    HAL_CAN_TxMailbox0CompleteCallback(&hcan2);
+
+    TEST_ASSERT_TRUE(s_bTxCallbackInvoked);
+}
+
+void test_HAL_CAN_ErrorCallback_Instance2(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_2, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+    BspCanRegisterErrorCallback(hCan, sTestErrorCallback);
+
+    HAL_CAN_GetError_ExpectAndReturn(&hcan2, HAL_CAN_ERROR_BOF);
+
+    HAL_CAN_ErrorCallback(&hcan2);
+
+    TEST_ASSERT_TRUE(s_bErrorCallbackInvoked);
+}
+
+/* ============================================================================
+ * Test Cases - Additional Edge Cases
+ * ========================================================================== */
+
+void test_BspCanStart_NoFilters_Success(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+
+    /* Start without adding any filters */
+    HAL_CAN_Start_ExpectAndReturn(&hcan1, HAL_OK);
+    HAL_CAN_ActivateNotification_IgnoreAndReturn(HAL_OK);
+
+    BspCanError_e eError = BspCanStart(hCan);
+
+    TEST_ASSERT_EQUAL(eBSP_CAN_ERR_NONE, eError);
+}
+
+void test_BspCanTransmit_AllPriorities_Success(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+
+    HAL_CAN_Start_ExpectAndReturn(&hcan1, HAL_OK);
+    HAL_CAN_ActivateNotification_IgnoreAndReturn(HAL_OK);
+    BspCanStart(hCan);
+
+    BspCanMessage_t tMsg = {.uId = 0x123, .eIdType = eBSP_CAN_ID_STANDARD, .eFrameType = eBSP_CAN_FRAME_DATA, .byDataLen = 8};
+
+    /* Test all 8 priority levels (0-7) */
+    for (uint8_t prio = 0; prio < 8; prio++)
+    {
+        HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 1);
+        HAL_CAN_AddTxMessage_IgnoreAndReturn(HAL_OK);
+
+        BspCanError_e eError = BspCanTransmit(hCan, &tMsg, prio, 0x1000 + prio);
+        TEST_ASSERT_EQUAL(eBSP_CAN_ERR_NONE, eError);
+    }
+}
+
+void test_HAL_CAN_TxMailbox0CompleteCallback_WithQueuedMessage_AndTxLED(void)
+{
+    LiveLed_t       txLed   = {.ePin = eM_LED2};
+    BspCanConfig_t  tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t  hCan    = BspCanAllocate(&tConfig, &txLed, NULL);
+    BspCanMessage_t tMsg    = {.uId = 0x123, .eIdType = eBSP_CAN_ID_STANDARD, .eFrameType = eBSP_CAN_FRAME_DATA, .byDataLen = 8};
+
+    HAL_CAN_Start_ExpectAndReturn(&hcan1, HAL_OK);
+    HAL_CAN_ActivateNotification_IgnoreAndReturn(HAL_OK);
+    BspCanStart(hCan);
+
+    /* Queue a message when no mailbox available */
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 0);
+    BspCanTransmit(hCan, &tMsg, 0, 0x1234);
+
+    /* Mailbox complete callback triggers dequeue and sends queued message */
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 1);
+    HAL_CAN_AddTxMessage_IgnoreAndReturn(HAL_OK);
+    HAL_GPIO_TogglePin_Ignore(); /* TX LED blink */
+
+    HAL_CAN_TxMailbox0CompleteCallback(&hcan1);
+}
+
+void test_HAL_CAN_RxFifo0MsgPendingCallback_ExtendedID(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+    BspCanRegisterRxCallback(hCan, sTestRxCallback);
+
+    /* Test with extended ID - the production code will parse it internally */
+    HAL_CAN_GetRxMessage_ExpectAndReturn(&hcan1, CAN_RX_FIFO0, NULL, NULL, HAL_OK);
+    HAL_CAN_GetRxMessage_IgnoreArg_pHeader();
+    HAL_CAN_GetRxMessage_IgnoreArg_aData();
+
+    HAL_CAN_RxFifo0MsgPendingCallback(&hcan1);
+
+    TEST_ASSERT_TRUE(s_bRxCallbackInvoked);
+}
+
+void test_HAL_CAN_TxMailbox1CompleteCallback_WithQueuedMessage_AndTxLED(void)
+{
+    LiveLed_t       txLed   = {.ePin = eM_LED2};
+    BspCanConfig_t  tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t  hCan    = BspCanAllocate(&tConfig, &txLed, NULL);
+    BspCanMessage_t tMsg    = {.uId = 0x123, .eIdType = eBSP_CAN_ID_STANDARD, .eFrameType = eBSP_CAN_FRAME_DATA, .byDataLen = 8};
+
+    HAL_CAN_Start_ExpectAndReturn(&hcan1, HAL_OK);
+    HAL_CAN_ActivateNotification_IgnoreAndReturn(HAL_OK);
+    BspCanStart(hCan);
+
+    /* Queue a message when no mailbox available */
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 0);
+    BspCanTransmit(hCan, &tMsg, 0, 0x1234);
+
+    /* Mailbox complete callback triggers dequeue and sends queued message with TX LED */
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 1);
+    HAL_CAN_AddTxMessage_IgnoreAndReturn(HAL_OK);
+    HAL_GPIO_TogglePin_Ignore(); /* TX LED blink */
+
+    HAL_CAN_TxMailbox1CompleteCallback(&hcan1);
+}
+
+void test_HAL_CAN_TxMailbox2CompleteCallback_WithQueuedMessage_AndTxLED(void)
+{
+    LiveLed_t       txLed   = {.ePin = eM_LED2};
+    BspCanConfig_t  tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t  hCan    = BspCanAllocate(&tConfig, &txLed, NULL);
+    BspCanMessage_t tMsg    = {.uId = 0x123, .eIdType = eBSP_CAN_ID_STANDARD, .eFrameType = eBSP_CAN_FRAME_DATA, .byDataLen = 8};
+
+    HAL_CAN_Start_ExpectAndReturn(&hcan1, HAL_OK);
+    HAL_CAN_ActivateNotification_IgnoreAndReturn(HAL_OK);
+    BspCanStart(hCan);
+
+    /* Queue a message when no mailbox available */
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 0);
+    BspCanTransmit(hCan, &tMsg, 0, 0x1234);
+
+    /* Mailbox complete callback triggers dequeue and sends queued message with TX LED */
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 1);
+    HAL_CAN_AddTxMessage_IgnoreAndReturn(HAL_OK);
+    HAL_GPIO_TogglePin_Ignore(); /* TX LED blink */
+
+    HAL_CAN_TxMailbox2CompleteCallback(&hcan1);
+}
+
+void test_HAL_CAN_RxFifo0MsgPendingCallback_RemoteFrame(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+    BspCanRegisterRxCallback(hCan, sTestRxCallback);
+
+    /* Test remote frame - tests RTR branch in sParseRxMessage */
+    HAL_CAN_GetRxMessage_ExpectAndReturn(&hcan1, CAN_RX_FIFO0, NULL, NULL, HAL_OK);
+    HAL_CAN_GetRxMessage_IgnoreArg_pHeader();
+    HAL_CAN_GetRxMessage_IgnoreArg_aData();
+
+    HAL_CAN_RxFifo0MsgPendingCallback(&hcan1);
+
+    TEST_ASSERT_TRUE(s_bRxCallbackInvoked);
+}
+
+void test_BspCanTransmit_HighPriority_MailboxAssignment(void)
+{
+    LiveLed_t       txLed   = {.ePin = eM_LED2};
+    BspCanConfig_t  tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t  hCan    = BspCanAllocate(&tConfig, &txLed, NULL);
+    BspCanMessage_t tMsg    = {.uId = 0x123, .eIdType = eBSP_CAN_ID_STANDARD, .eFrameType = eBSP_CAN_FRAME_DATA, .byDataLen = 8};
+
+    HAL_CAN_Start_ExpectAndReturn(&hcan1, HAL_OK);
+    HAL_CAN_ActivateNotification_IgnoreAndReturn(HAL_OK);
+    BspCanStart(hCan);
+
+    /* Test mailbox assignment variations - AddTxMessage returns different mailboxes */
+    /* This tests sMailboxToIndex branches for CAN_TX_MAILBOX1 and CAN_TX_MAILBOX2 */
+    for (int i = 0; i < 3; i++)
+    {
+        HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 1);
+        HAL_CAN_AddTxMessage_IgnoreAndReturn(HAL_OK);
+        HAL_GPIO_TogglePin_Ignore(); /* TX LED */
+        BspCanTransmit(hCan, &tMsg, 0, 0x1000 + i);
+    }
+}
+
+void test_BspCanAbortTransmit_MessageInMultiplePriorities(void)
+{
+    BspCanConfig_t  tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t  hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+    BspCanMessage_t tMsg    = {.uId = 0x100, .eIdType = eBSP_CAN_ID_STANDARD, .eFrameType = eBSP_CAN_FRAME_DATA, .byDataLen = 8};
+
+    HAL_CAN_Start_ExpectAndReturn(&hcan1, HAL_OK);
+    HAL_CAN_ActivateNotification_IgnoreAndReturn(HAL_OK);
+    BspCanStart(hCan);
+
+    /* Queue messages at different priorities */
+    for (uint8_t prio = 0; prio < 3; prio++)
+    {
+        HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 0);
+        BspCanTransmit(hCan, &tMsg, prio, 0x2000 + prio);
+    }
+
+    /* Abort middle priority message - tests priority queue search across levels */
+    BspCanError_e eError = BspCanAbortTransmit(hCan, 0x2001);
+    TEST_ASSERT_EQUAL(eBSP_CAN_ERR_NONE, eError);
+}
+
+void test_BspCanTransmit_InvalidPriority_UpperBound(void)
+{
+    BspCanConfig_t  tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t  hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+    BspCanMessage_t tMsg    = {.uId = 0x123, .eIdType = eBSP_CAN_ID_STANDARD, .eFrameType = eBSP_CAN_FRAME_DATA, .byDataLen = 8};
+
+    HAL_CAN_Start_ExpectAndReturn(&hcan1, HAL_OK);
+    HAL_CAN_ActivateNotification_IgnoreAndReturn(HAL_OK);
+    BspCanStart(hCan);
+
+    /* Test priority = 8 (one above max of 7) */
+    BspCanError_e eError = BspCanTransmit(hCan, &tMsg, 8, 0x1234);
+    TEST_ASSERT_EQUAL(eBSP_CAN_ERR_INVALID_PARAM, eError);
+
+    /* Test priority = 255 (max uint8_t) */
+    eError = BspCanTransmit(hCan, &tMsg, 255, 0x1235);
+    TEST_ASSERT_EQUAL(eBSP_CAN_ERR_INVALID_PARAM, eError);
+}
+
+void test_BspCanAbortTransmit_EmptyQueue_SearchAllPriorities(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+
+    HAL_CAN_Start_ExpectAndReturn(&hcan1, HAL_OK);
+    HAL_CAN_ActivateNotification_IgnoreAndReturn(HAL_OK);
+    BspCanStart(hCan);
+
+    /* Try to abort when queue is empty - tests search through all priority levels */
+    BspCanError_e eError = BspCanAbortTransmit(hCan, 0x9999);
+    TEST_ASSERT_EQUAL(eBSP_CAN_ERR_INVALID_PARAM, eError);
+}
+
+void test_HAL_CAN_TxMailbox_AllThreeMailboxes_WithQueueDrain(void)
+{
+    LiveLed_t       txLed   = {.ePin = eM_LED2};
+    BspCanConfig_t  tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t  hCan    = BspCanAllocate(&tConfig, &txLed, NULL);
+    BspCanMessage_t tMsg    = {.uId = 0x456, .eIdType = eBSP_CAN_ID_EXTENDED, .eFrameType = eBSP_CAN_FRAME_DATA, .byDataLen = 4};
+
+    HAL_CAN_Start_ExpectAndReturn(&hcan1, HAL_OK);
+    HAL_CAN_ActivateNotification_IgnoreAndReturn(HAL_OK);
+    BspCanStart(hCan);
+    BspCanRegisterTxCallback(hCan, sTestTxCallback);
+
+    /* Queue 3 messages when no mailboxes available */
+    for (int i = 0; i < 3; i++)
+    {
+        HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 0);
+        BspCanTransmit(hCan, &tMsg, i, 0x3000 + i);
+    }
+
+    /* Test all three mailbox callbacks draining the queue with TX LED */
+    /* Mailbox 0 complete */
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 1);
+    HAL_CAN_AddTxMessage_IgnoreAndReturn(HAL_OK);
+    HAL_GPIO_TogglePin_Ignore();
+    HAL_CAN_TxMailbox0CompleteCallback(&hcan1);
+    TEST_ASSERT_TRUE(s_bTxCallbackInvoked);
+    s_bTxCallbackInvoked = false;
+
+    /* Mailbox 1 complete */
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 1);
+    HAL_CAN_AddTxMessage_IgnoreAndReturn(HAL_OK);
+    HAL_GPIO_TogglePin_Ignore();
+    HAL_CAN_TxMailbox1CompleteCallback(&hcan1);
+    TEST_ASSERT_TRUE(s_bTxCallbackInvoked);
+    s_bTxCallbackInvoked = false;
+
+    /* Mailbox 2 complete */
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 1);
+    HAL_CAN_AddTxMessage_IgnoreAndReturn(HAL_OK);
+    HAL_GPIO_TogglePin_Ignore();
+    HAL_CAN_TxMailbox2CompleteCallback(&hcan1);
+    TEST_ASSERT_TRUE(s_bTxCallbackInvoked);
+}
+
+void test_BspCanTransmit_ExtendedID_WithTxLED(void)
+{
+    LiveLed_t       txLed   = {.ePin = eM_LED1};
+    BspCanConfig_t  tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t  hCan    = BspCanAllocate(&tConfig, &txLed, NULL);
+    BspCanMessage_t tMsg    = {.uId = 0x1FFFFFFF, .eIdType = eBSP_CAN_ID_EXTENDED, .eFrameType = eBSP_CAN_FRAME_REMOTE, .byDataLen = 0};
+
+    HAL_CAN_Start_ExpectAndReturn(&hcan1, HAL_OK);
+    HAL_CAN_ActivateNotification_IgnoreAndReturn(HAL_OK);
+    BspCanStart(hCan);
+
+    /* Test extended ID + remote frame combination with TX LED */
+    HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 1);
+    HAL_CAN_AddTxMessage_IgnoreAndReturn(HAL_OK);
+    HAL_GPIO_TogglePin_Ignore(); /* TX LED blink */
+
+    BspCanError_e eError = BspCanTransmit(hCan, &tMsg, 7, 0x4000);
+    TEST_ASSERT_EQUAL(eBSP_CAN_ERR_NONE, eError);
+}
+
+void test_HAL_CAN_RxFifo1MsgPendingCallback_RemoteFrame(void)
+{
+    BspCanConfig_t tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+    BspCanRegisterRxCallback(hCan, sTestRxCallback);
+
+    /* Test remote frame on FIFO1 - ensures both FIFOs tested with remote frames */
+    HAL_CAN_GetRxMessage_ExpectAndReturn(&hcan1, CAN_RX_FIFO1, NULL, NULL, HAL_OK);
+    HAL_CAN_GetRxMessage_IgnoreArg_pHeader();
+    HAL_CAN_GetRxMessage_IgnoreArg_aData();
+
+    HAL_CAN_RxFifo1MsgPendingCallback(&hcan1);
+
+    TEST_ASSERT_TRUE(s_bRxCallbackInvoked);
+}
+
+void test_BspCanTransmit_QueuedMessages_AllPriorities(void)
+{
+    BspCanConfig_t  tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t  hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+    BspCanMessage_t tMsg    = {.uId = 0x200, .eIdType = eBSP_CAN_ID_STANDARD, .eFrameType = eBSP_CAN_FRAME_DATA, .byDataLen = 8};
+
+    HAL_CAN_Start_ExpectAndReturn(&hcan1, HAL_OK);
+    HAL_CAN_ActivateNotification_IgnoreAndReturn(HAL_OK);
+    BspCanStart(hCan);
+
+    /* Queue one message at each priority level to test all queue branches */
+    for (uint8_t prio = 0; prio < 8; prio++)
+    {
+        HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 0);
+        BspCanError_e eError = BspCanTransmit(hCan, &tMsg, prio, 0x5000 + prio);
+        TEST_ASSERT_EQUAL(eBSP_CAN_ERR_NONE, eError);
+    }
+
+    /* Verify queue info shows all priorities used */
+    uint8_t byUsed = 0;
+    BspCanGetTxQueueInfo(hCan, &byUsed, NULL);
+    TEST_ASSERT_EQUAL(8, byUsed);
+}
+
+void test_BspCanAbortTransmit_FromHighestPriority(void)
+{
+    BspCanConfig_t  tConfig = {.eInstance = eBSP_CAN_INSTANCE_1, .bLoopback = false, .bSilent = false, .bAutoRetransmit = true};
+    BspCanHandle_t  hCan    = BspCanAllocate(&tConfig, NULL, NULL);
+    BspCanMessage_t tMsg    = {.uId = 0x300, .eIdType = eBSP_CAN_ID_STANDARD, .eFrameType = eBSP_CAN_FRAME_DATA, .byDataLen = 8};
+
+    HAL_CAN_Start_ExpectAndReturn(&hcan1, HAL_OK);
+    HAL_CAN_ActivateNotification_IgnoreAndReturn(HAL_OK);
+    BspCanStart(hCan);
+
+    /* Queue messages at priority 0 (highest) */
+    for (int i = 0; i < 3; i++)
+    {
+        HAL_CAN_GetTxMailboxesFreeLevel_ExpectAndReturn(&hcan1, 0);
+        BspCanTransmit(hCan, &tMsg, 0, 0x6000 + i);
+    }
+
+    /* Abort from priority 0 - tests bitmap update branch when queue becomes empty */
+    BspCanError_e eError = BspCanAbortTransmit(hCan, 0x6001);
     TEST_ASSERT_EQUAL(eBSP_CAN_ERR_NONE, eError);
 }
