@@ -12,6 +12,7 @@ set(${libName}_HEADERS
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal.h
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_adc.h
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_spi.h
+    ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_i2c.h
 )
 
 # Additional HAL headers that need to be copied (dependencies)
@@ -20,6 +21,7 @@ set(${libName}_DEPENDENCY_HEADERS
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_gpio_ex.h
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_adc_ex.h
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_dma.h
+    ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_i2c_ex.h
 )
 
 # Create directory for mocks
@@ -62,6 +64,11 @@ configure_file(${CMAKE_SOURCE_DIR}/tests/cmake/stm32f4xx_ll_adc.h
 # Copy stub stm32f4xx_ll_spi.h for SPI includes
 configure_file(${CMAKE_SOURCE_DIR}/tests/cmake/stm32f4xx_ll_spi.h
                ${CMAKE_BINARY_DIR}/tests/${libName}/stm32f4xx_ll_spi.h
+               COPYONLY)
+
+# Copy stub stm32f4xx_ll_i2c.h for I2C includes
+configure_file(${CMAKE_SOURCE_DIR}/tests/cmake/stm32f4xx_ll_i2c.h
+               ${CMAKE_BINARY_DIR}/tests/${libName}/stm32f4xx_ll_i2c.h
                COPYONLY)
 
 # Copy main.h from cpu_precompiled_hal for production code includes (gpio_struct.c needs this)
@@ -145,6 +152,30 @@ foreach(element IN LISTS ${libName}_HEADERS)
         # Remove HAL_SPI_RegisterCallback and HAL_SPI_UnRegisterCallback (not needed for tests)
         string(REGEX REPLACE "HAL_StatusTypeDef[\r\n\t ]+HAL_SPI_RegisterCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
         string(REGEX REPLACE "HAL_StatusTypeDef[\r\n\t ]+HAL_SPI_UnRegisterCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} "${FILE_CONTENTS}")
+    endif()
+
+    # Patch stm32f4xx_hal_i2c.h to remove user callbacks and register callback functions
+    if(fileName STREQUAL "stm32f4xx_hal_i2c.h")
+        file(READ ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} FILE_CONTENTS)
+        # Remove HAL_I2C_MasterTxCpltCallback declaration (implemented by user code, not mocked)
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_I2C_MasterTxCpltCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        # Remove HAL_I2C_MasterRxCpltCallback declaration (implemented by user code, not mocked)
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_I2C_MasterRxCpltCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        # Remove HAL_I2C_MemTxCpltCallback declaration (implemented by user code, not mocked)
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_I2C_MemTxCpltCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        # Remove HAL_I2C_MemRxCpltCallback declaration (implemented by user code, not mocked)
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_I2C_MemRxCpltCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        # Remove HAL_I2C_ErrorCallback declaration (implemented by user code, not mocked)
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_I2C_ErrorCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        # Remove HAL_I2C_RegisterCallback and HAL_I2C_UnRegisterCallback (not needed for tests)
+        string(REGEX REPLACE "HAL_StatusTypeDef[\r\n\t ]+HAL_I2C_RegisterCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "HAL_StatusTypeDef[\r\n\t ]+HAL_I2C_UnRegisterCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        # Remove HAL_I2C_RegisterAddrCallback and HAL_I2C_UnRegisterAddrCallback (not needed for tests)
+        string(REGEX REPLACE "HAL_StatusTypeDef[\r\n\t ]+HAL_I2C_RegisterAddrCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "HAL_StatusTypeDef[\r\n\t ]+HAL_I2C_UnRegisterAddrCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        # Remove pI2C_AddrCallbackTypeDef typedef
+        string(REGEX REPLACE "typedef[\r\n\t ]+void[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*pI2C_AddrCallbackTypeDef[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
         file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} "${FILE_CONTENTS}")
     endif()
 
