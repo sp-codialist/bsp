@@ -153,6 +153,66 @@ typedef struct
     volatile uint32_t sFilterRegister[28 * 2]; /* Filter banks (simplified) */
 } CAN_TypeDef;
 
+/* TIM peripheral structure stub */
+typedef struct
+{
+    volatile uint32_t CR1;   /* Control register 1 */
+    volatile uint32_t CR2;   /* Control register 2 */
+    volatile uint32_t SMCR;  /* Slave mode control register */
+    volatile uint32_t DIER;  /* DMA/Interrupt enable register */
+    volatile uint32_t SR;    /* Status register */
+    volatile uint32_t EGR;   /* Event generation register */
+    volatile uint32_t CCMR1; /* Capture/compare mode register 1 */
+    volatile uint32_t CCMR2; /* Capture/compare mode register 2 */
+    volatile uint32_t CCER;  /* Capture/compare enable register */
+    volatile uint32_t CNT;   /* Counter */
+    volatile uint32_t PSC;   /* Prescaler */
+    volatile uint32_t ARR;   /* Auto-reload register */
+    volatile uint32_t RCR;   /* Repetition counter register */
+    volatile uint32_t CCR1;  /* Capture/compare register 1 */
+    volatile uint32_t CCR2;  /* Capture/compare register 2 */
+    volatile uint32_t CCR3;  /* Capture/compare register 3 */
+    volatile uint32_t CCR4;  /* Capture/compare register 4 */
+    volatile uint32_t BDTR;  /* Break and dead-time register */
+    volatile uint32_t DCR;   /* DMA control register */
+    volatile uint32_t DMAR;  /* DMA address for full transfer */
+    volatile uint32_t OR;    /* Option register */
+} TIM_TypeDef;
+
+/* TIM channel definitions */
+#ifndef TIM_CHANNEL_1
+    #define TIM_CHANNEL_1 ((uint32_t)0x00000000)
+#endif
+#ifndef TIM_CHANNEL_2
+    #define TIM_CHANNEL_2 ((uint32_t)0x00000004)
+#endif
+#ifndef TIM_CHANNEL_3
+    #define TIM_CHANNEL_3 ((uint32_t)0x00000008)
+#endif
+#ifndef TIM_CHANNEL_4
+    #define TIM_CHANNEL_4 ((uint32_t)0x0000000C)
+#endif
+#ifndef TIM_CHANNEL_ALL
+    #define TIM_CHANNEL_ALL ((uint32_t)0x0000003C)
+#endif
+
+/* RCC clock divider definitions */
+#ifndef RCC_HCLK_DIV1
+    #define RCC_HCLK_DIV1 ((uint32_t)0x00000000)
+#endif
+#ifndef RCC_HCLK_DIV2
+    #define RCC_HCLK_DIV2 ((uint32_t)0x00001000)
+#endif
+#ifndef RCC_HCLK_DIV4
+    #define RCC_HCLK_DIV4 ((uint32_t)0x00001400)
+#endif
+#ifndef RCC_HCLK_DIV8
+    #define RCC_HCLK_DIV8 ((uint32_t)0x00001800)
+#endif
+#ifndef RCC_HCLK_DIV16
+    #define RCC_HCLK_DIV16 ((uint32_t)0x00001C00)
+#endif
+
 /* CAN register bit definitions */
 #define CAN_ESR_BOFF ((uint32_t)0x00000004) /* Bus-off flag */
 #define CAN_ESR_EPVF ((uint32_t)0x00000002) /* Error passive flag */
@@ -484,6 +544,46 @@ typedef enum
     HAL_CAN_MSPINIT_CB_ID              = 0x0DU,
     HAL_CAN_MSPDEINIT_CB_ID            = 0x0EU
 } HAL_CAN_CallbackIDTypeDef;
+
+/**
+ * @brief  TIM Handle structure (stub for testing)
+ */
+#ifndef TIM_HANDLETYPEDEF
+    #define TIM_HANDLETYPEDEF
+typedef struct
+{
+    TIM_TypeDef*    Instance; /* TIM peripheral base address */
+    void*           Init;     /* TIM initialization parameters (opaque) */
+    HAL_LockTypeDef Lock;     /* TIM locking object */
+    void*           State;    /* TIM State (opaque) */
+} TIM_HandleTypeDef;
+#endif
+
+/**
+ * @brief  RCC clock configuration structure (stub for testing)
+ */
+#ifndef RCC_CLKINITTYPEDEF
+    #define RCC_CLKINITTYPEDEF
+typedef struct
+{
+    uint32_t SYSCLKSource;
+    uint32_t AHBCLKDivider;
+    uint32_t APB1CLKDivider;
+    uint32_t APB2CLKDivider;
+} RCC_ClkInitTypeDef;
+#endif
+
+/**
+ * @brief  DMA Handle structure (stub for testing)
+ */
+struct __DMA_HandleTypeDef
+{
+    void*           Instance; /* DMA peripheral base address */
+    void*           Init;     /* DMA initialization parameters (opaque) */
+    HAL_LockTypeDef Lock;     /* DMA locking object */
+    void*           State;    /* DMA State (opaque) */
+    void*           Parent;   /* Parent object (opaque) */
+};
 
 /* Exported macros -----------------------------------------------------------*/
 

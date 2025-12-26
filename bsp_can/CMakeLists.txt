@@ -5,7 +5,7 @@ project(${libName} C)
 
 add_library (${libName} STATIC)
 target_sources (${libName}
-    PUBLIC
+    PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/${libName}.c
 )
 
