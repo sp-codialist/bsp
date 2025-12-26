@@ -234,6 +234,7 @@ void test_BspPwmAllocateChannel_FrequencyConflict_CallsErrorCallback(void)
 
     setup_mock_rcc_clock_config(false, 42000000, RCC_HCLK_DIV2);
     BspPwmHandle_t handle2 = BspPwmAllocateChannel(eBSP_PWM_TIMER_2, eBSP_PWM_CHANNEL_2, 2); // Different frequency!
+    (void)handle2; // Intentionally unused - testing error callback
 
     // Callback should be invoked due to frequency conflict
     TEST_ASSERT_TRUE(callback_invoked);
@@ -370,6 +371,8 @@ void test_BspPwmStartAll_MultipleChannels_StartsAll(void)
 
     setup_mock_rcc_clock_config(false, 42000000, RCC_HCLK_DIV2);
     BspPwmHandle_t handle2 = BspPwmAllocateChannel(eBSP_PWM_TIMER_2, eBSP_PWM_CHANNEL_2, 1);
+    (void)handle1; // Intentionally unused - StartAll operates on internal state
+    (void)handle2;
 
     HAL_TIM_PWM_Start_ExpectAndReturn(&htim2, TIM_CHANNEL_1, HAL_OK);
     HAL_TIM_PWM_Start_ExpectAndReturn(&htim2, TIM_CHANNEL_2, HAL_OK);
@@ -392,6 +395,8 @@ void test_BspPwmStartAll_OneChannelFails_ContinuesWithOthers(void)
 
     setup_mock_rcc_clock_config(false, 42000000, RCC_HCLK_DIV2);
     BspPwmHandle_t handle2 = BspPwmAllocateChannel(eBSP_PWM_TIMER_2, eBSP_PWM_CHANNEL_2, 1);
+    (void)handle1; // Intentionally unused - StartAll operates on internal state
+    (void)handle2;
 
     HAL_TIM_PWM_Start_ExpectAndReturn(&htim2, TIM_CHANNEL_1, HAL_ERROR);
     HAL_TIM_PWM_Start_ExpectAndReturn(&htim2, TIM_CHANNEL_2, HAL_OK);
@@ -453,6 +458,8 @@ void test_BspPwmStopAll_MultipleChannels_StopsAll(void)
 
     setup_mock_rcc_clock_config(false, 42000000, RCC_HCLK_DIV2);
     BspPwmHandle_t handle2 = BspPwmAllocateChannel(eBSP_PWM_TIMER_2, eBSP_PWM_CHANNEL_2, 1);
+    (void)handle1; // Intentionally unused - StopAll operates on internal state
+    (void)handle2;
 
     HAL_TIM_PWM_Stop_ExpectAndReturn(&htim2, TIM_CHANNEL_1, HAL_OK);
     HAL_TIM_PWM_Stop_ExpectAndReturn(&htim2, TIM_CHANNEL_2, HAL_OK);
