@@ -16,6 +16,7 @@ set(${libName}_HEADERS
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_can.h
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_tim.h
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_rcc.h
+    ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_rtc.h
 )
 
 # Additional HAL headers that need to be copied (dependencies)
@@ -28,6 +29,7 @@ set(${libName}_DEPENDENCY_HEADERS
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/Legacy/stm32f4xx_hal_can_legacy.h
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_tim_ex.h
     ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_rcc_ex.h
+    ${cpu_precompiled_hal_SOURCE_DIR}/include/stm32cubef4/stm32f4xx_hal_rtc_ex.h
 )
 
 # Create directory for mocks
@@ -281,6 +283,33 @@ foreach(element IN LISTS ${libName}_HEADERS)
         # Remove HAL_CAN_RegisterCallback and HAL_CAN_UnRegisterCallback (not needed for tests)
         string(REGEX REPLACE "HAL_StatusTypeDef[\r\n\t ]+HAL_CAN_RegisterCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
         string(REGEX REPLACE "HAL_StatusTypeDef[\r\n\t ]+HAL_CAN_UnRegisterCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} "${FILE_CONTENTS}")
+    endif()
+
+    # Patch stm32f4xx_hal_rtc.h to remove callback-related functions and types
+    if(fileName STREQUAL "stm32f4xx_hal_rtc.h")
+        file(READ ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} FILE_CONTENTS)
+
+        # Add include guard before HAL_RTCStateTypeDef enum
+        string(REGEX REPLACE "(typedef enum[\r\n\t ]*\\{[^}]*HAL_RTC_STATE_[^}]*\\}[\r\n\t ]*HAL_RTCStateTypeDef[\r\n\t ]*;)" "#ifndef HAL_RTC_STATE_TYPEDEF\n#define HAL_RTC_STATE_TYPEDEF\n\\1\n#endif /* HAL_RTC_STATE_TYPEDEF */" FILE_CONTENTS "${FILE_CONTENTS}")
+
+        # Add include guard before RTC_HandleTypeDef
+        string(REGEX REPLACE "(#if \\(USE_HAL_RTC_REGISTER_CALLBACKS == 1\\)[\r\n\t ]+typedef struct __RTC_HandleTypeDef[\r\n\t ]+#else[\r\n\t ]+typedef struct[\r\n\t ]+#endif[^}]*\\}[\r\n\t ]*RTC_HandleTypeDef[\r\n\t ]*;)" "#ifndef RTC_HANDLETYPEDEF\n#define RTC_HANDLETYPEDEF\n\\1\n#endif /* RTC_HANDLETYPEDEF */" FILE_CONTENTS "${FILE_CONTENTS}")
+
+        # Remove HAL_RTC_RegisterCallback and HAL_RTC_UnRegisterCallback declarations
+        string(REGEX REPLACE "HAL_StatusTypeDef[\r\n\t ]+HAL_RTC_RegisterCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "HAL_StatusTypeDef[\r\n\t ]+HAL_RTC_UnRegisterCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+
+        # Remove user callback declarations (implemented by user code, not mocked)
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_RTC_AlarmAEventCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_RTCEx_AlarmBEventCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_RTCEx_TimeStampEventCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_RTCEx_WakeUpTimerEventCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_RTCEx_Tamper1EventCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_RTCEx_Tamper2EventCallback[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_RTC_MspInit[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+        string(REGEX REPLACE "void[\r\n\t ]+HAL_RTC_MspDeInit[\r\n\t ]*\\([^)]*\\)[\r\n\t ]*;" "" FILE_CONTENTS "${FILE_CONTENTS}")
+
         file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${libName}/${fileName} "${FILE_CONTENTS}")
     endif()
 

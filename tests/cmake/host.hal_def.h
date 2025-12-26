@@ -179,6 +179,34 @@ typedef struct
     volatile uint32_t OR;    /* Option register */
 } TIM_TypeDef;
 
+/* RTC peripheral structure */
+typedef struct
+{
+    volatile uint32_t TR;       /* Time register */
+    volatile uint32_t DR;       /* Date register */
+    volatile uint32_t CR;       /* Control register */
+    volatile uint32_t ISR;      /* Initialization and status register */
+    volatile uint32_t PRER;     /* Prescaler register */
+    volatile uint32_t WUTR;     /* Wakeup timer register */
+    volatile uint32_t CALIBR;   /* Calibration register */
+    volatile uint32_t ALRMAR;   /* Alarm A register */
+    volatile uint32_t ALRMBR;   /* Alarm B register */
+    volatile uint32_t WPR;      /* Write protection register */
+    volatile uint32_t SSR;      /* Sub second register */
+    volatile uint32_t SHIFTR;   /* Shift control register */
+    volatile uint32_t TSTR;     /* Time stamp time register */
+    volatile uint32_t TSDR;     /* Time stamp date register */
+    volatile uint32_t TSSSR;    /* Time-stamp sub second register */
+    volatile uint32_t CALR;     /* Calibration register */
+    volatile uint32_t TAFCR;    /* Tamper and alternate function configuration register */
+    volatile uint32_t ALRMASSR; /* Alarm A sub second register */
+    volatile uint32_t ALRMBSSR; /* Alarm B sub second register */
+    uint32_t          RESERVED7;
+    volatile uint32_t BKP0R; /* Backup register 0 */
+    volatile uint32_t BKP1R; /* Backup register 1 */
+    /* ... more backup registers ... */
+} RTC_TypeDef;
+
 /* TIM channel definitions */
 #ifndef TIM_CHANNEL_1
     #define TIM_CHANNEL_1 ((uint32_t)0x00000000)
@@ -557,6 +585,35 @@ typedef struct
     HAL_LockTypeDef Lock;     /* TIM locking object */
     void*           State;    /* TIM State (opaque) */
 } TIM_HandleTypeDef;
+#endif
+
+/**
+ * @brief  RTC State enumeration (stub for testing)
+ */
+#ifndef HAL_RTC_STATE_TYPEDEF
+    #define HAL_RTC_STATE_TYPEDEF
+typedef enum
+{
+    HAL_RTC_STATE_RESET   = 0x00U,
+    HAL_RTC_STATE_READY   = 0x01U,
+    HAL_RTC_STATE_BUSY    = 0x02U,
+    HAL_RTC_STATE_TIMEOUT = 0x03U,
+    HAL_RTC_STATE_ERROR   = 0x04U
+} HAL_RTCStateTypeDef;
+#endif /* HAL_RTC_STATE_TYPEDEF */
+
+/**
+ * @brief  RTC Handle structure (stub for testing)
+ */
+#ifndef RTC_HANDLETYPEDEF
+    #define RTC_HANDLETYPEDEF
+typedef struct
+{
+    RTC_TypeDef*        Instance; /* RTC peripheral base address */
+    void*               Init;     /* RTC initialization parameters (opaque) */
+    HAL_LockTypeDef     Lock;     /* RTC locking object */
+    HAL_RTCStateTypeDef State;    /* RTC State */
+} RTC_HandleTypeDef;
 #endif
 
 /**

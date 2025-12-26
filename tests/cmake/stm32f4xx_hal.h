@@ -33,6 +33,9 @@ extern "C"
 /* Include RCC header for RCC types and functions */
 #include "stm32f4xx_hal_rcc.h"
 
+/* Include RTC header for RTC types and functions */
+#include "stm32f4xx_hal_rtc.h"
+
 /* Tick function declarations (will be mocked) */
 uint32_t HAL_GetTick(void);
 
