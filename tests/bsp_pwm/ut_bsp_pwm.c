@@ -244,16 +244,17 @@ void test_BspPwmAllocateChannel_ExceedMaxChannels_ReturnsError(void)
 {
     BspPwmHandle_t handles[BSP_PWM_MAX_CHANNELS + 1];
 
-    // Allocate up to max
+    // Allocate up to max - use only APB1 timers to simplify mock setup
     for (uint8_t i = 0; i < BSP_PWM_MAX_CHANNELS; i++)
     {
-        setup_mock_rcc_clock_config(false, 42000000, RCC_HCLK_DIV2);
-        handles[i] = BspPwmAllocateChannel(eBSP_PWM_TIMER_2 + (i % eBSP_PWM_TIMER_COUNT), eBSP_PWM_CHANNEL_1, 1);
+        setup_mock_rcc_clock_config(false, 42000000, RCC_HCLK_DIV2); // APB1
+        // Use APB1 timers: TIMER_2, TIMER_3, TIMER_4, TIMER_5, TIMER_12, TIMER_13, TIMER_14
+        BspPwmTimer_e timer = (i % 4) + eBSP_PWM_TIMER_2; // Cycles through TIMER_2-5
+        handles[i]          = BspPwmAllocateChannel(timer, (BspPwmChannel_e)(i % eBSP_PWM_CHANNEL_COUNT), 1);
         TEST_ASSERT_GREATER_OR_EQUAL(0, handles[i]);
     }
 
-    // Try to allocate one more - should fail
-    setup_mock_rcc_clock_config(false, 42000000, RCC_HCLK_DIV2);
+    // Try to allocate one more - should fail (all slots full, so won't call RCC functions)
     BspPwmHandle_t overflow_handle = BspPwmAllocateChannel(eBSP_PWM_TIMER_3, eBSP_PWM_CHANNEL_1, 1);
     TEST_ASSERT_EQUAL(-1, overflow_handle);
 }
