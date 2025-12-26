@@ -111,6 +111,21 @@ typedef struct
     volatile uint32_t I2SPR;   /* I2S prescaler register */
 } SPI_TypeDef;
 
+/* I2C peripheral structure stub */
+typedef struct
+{
+    volatile uint32_t CR1;   /* Control register 1 */
+    volatile uint32_t CR2;   /* Control register 2 */
+    volatile uint32_t OAR1;  /* Own address register 1 */
+    volatile uint32_t OAR2;  /* Own address register 2 */
+    volatile uint32_t DR;    /* Data register */
+    volatile uint32_t SR1;   /* Status register 1 */
+    volatile uint32_t SR2;   /* Status register 2 */
+    volatile uint32_t CCR;   /* Clock control register */
+    volatile uint32_t TRISE; /* TRISE register */
+    volatile uint32_t FLTR;  /* FLTR register */
+} I2C_TypeDef;
+
 /* __IO qualifier stub */
 #ifndef __IO
     #define __IO volatile
