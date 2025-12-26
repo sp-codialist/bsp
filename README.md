@@ -13,6 +13,7 @@ A modular Board Support Package (BSP) library for STM32F4 microcontrollers with 
 - 🔄 **SPI communication** with blocking and DMA modes (98% test coverage)
 - 📊 **ADC sampling** with DMA and periodic triggers (96% test coverage)
 - 🚗 **CAN communication** with priority queues and event-driven callbacks (96% test coverage)
+- 🌊 **PWM generation** with multi-channel support and frequency control (98% test coverage)
 - 🧪 **Comprehensive testing** using Unity/CMock frameworks
 - 🔧 **FORCE_STATIC pattern** for testable internal functions
 - 📦 **CMake + CPM** for dependency management
@@ -47,6 +48,7 @@ cmake --build build/bsp-gnuarm14.3
 | **bsp_spi** | SPI communication (blocking + DMA) | 98% | [📖 Docs](docs/bsp_spi.md) |
 | **bsp_i2c** | I2C communication (blocking + interrupt) | 93% | [📖 Docs](docs/bsp_i2c.md) |
 | **bsp_can** | CAN with priority queues and callbacks | 96% | [📖 Docs](docs/bsp_can.md) |
+| **bsp_pwm** | PWM generation with multi-channel control | 98% | [📖 Docs](docs/bsp_pwm.md) |
 
 ## Documentation
 
@@ -58,8 +60,9 @@ cmake --build build/bsp-gnuarm14.3
 - 📊 [BSP ADC](docs/bsp_adc.md) - ADC sampling with DMA and callbacks
 - 🔄 [BSP SPI](docs/bsp_spi.md) - SPI communication with blocking and DMA modes
 - 🔌 [BSP I2C](docs/bsp_i2c.md) - I2C communication with blocking and interrupt modes
-- � [BSP CAN](docs/bsp_can.md) - CAN communication with priority queues and event-driven callbacks
-- �🔧 [BSP Common](docs/bsp_common.md) - FORCE_STATIC and utilities
+- 🚗 [BSP CAN](docs/bsp_can.md) - CAN communication with priority queues and event-driven callbacks
+- 🌊 [BSP PWM](docs/bsp_pwm.md) - PWM generation with frequency and duty cycle control
+- 🔧 [BSP Common](docs/bsp_common.md) - FORCE_STATIC and utilities
 
 ## Usage Example
 
@@ -96,7 +99,8 @@ bsp/
 ├── bsp_spi/             # SPI communication
 ├── bsp_i2c/             # I2C communication
 ├── bsp_can/             # CAN communication
-├── tests/               # Unit tests (291 tests total)
+├── bsp_pwm/             # PWM generation
+├── tests/               # Unit tests (338 tests total)
 ├── docs/                # Documentation
 └── CMakePresets/        # Build configurations
 ```
