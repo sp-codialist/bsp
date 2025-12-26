@@ -126,9 +126,197 @@ typedef struct
     volatile uint32_t FLTR;  /* FLTR register */
 } I2C_TypeDef;
 
+/* CAN peripheral structure stub */
+typedef struct
+{
+    volatile uint32_t MCR;                     /* Master control register */
+    volatile uint32_t MSR;                     /* Master status register */
+    volatile uint32_t TSR;                     /* Transmit status register */
+    volatile uint32_t RF0R;                    /* Receive FIFO 0 register */
+    volatile uint32_t RF1R;                    /* Receive FIFO 1 register */
+    volatile uint32_t IER;                     /* Interrupt enable register */
+    volatile uint32_t ESR;                     /* Error status register */
+    volatile uint32_t BTR;                     /* Bit timing register */
+    uint32_t          RESERVED0[88];           /* Reserved */
+    volatile uint32_t sTxMailBox[3 * 4];       /* TX MailBox (simplified) */
+    volatile uint32_t sFIFOMailBox[2 * 6];     /* FIFO MailBox (simplified) */
+    uint32_t          RESERVED1[12];           /* Reserved */
+    volatile uint32_t FMR;                     /* Filter master register */
+    volatile uint32_t FM1R;                    /* Filter mode register */
+    uint32_t          RESERVED2;               /* Reserved */
+    volatile uint32_t FS1R;                    /* Filter scale register */
+    uint32_t          RESERVED3;               /* Reserved */
+    volatile uint32_t FFA1R;                   /* Filter FIFO assignment register */
+    uint32_t          RESERVED4;               /* Reserved */
+    volatile uint32_t FA1R;                    /* Filter activation register */
+    uint32_t          RESERVED5[8];            /* Reserved */
+    volatile uint32_t sFilterRegister[28 * 2]; /* Filter banks (simplified) */
+} CAN_TypeDef;
+
+/* CAN register bit definitions */
+#define CAN_ESR_BOFF ((uint32_t)0x00000004) /* Bus-off flag */
+#define CAN_ESR_EPVF ((uint32_t)0x00000002) /* Error passive flag */
+#define CAN_ESR_TEC  ((uint32_t)0x00FF0000) /* Transmit error counter */
+#define CAN_ESR_REC  ((uint32_t)0xFF000000) /* Receive error counter */
+
+/* CAN mailbox definitions */
+#ifndef CAN_TX_MAILBOX0
+    #define CAN_TX_MAILBOX0 ((uint32_t)0x00000001)
+#endif
+#ifndef CAN_TX_MAILBOX1
+    #define CAN_TX_MAILBOX1 ((uint32_t)0x00000002)
+#endif
+#ifndef CAN_TX_MAILBOX2
+    #define CAN_TX_MAILBOX2 ((uint32_t)0x00000004)
+#endif
+
+/* CAN FIFO definitions */
+#ifndef CAN_RX_FIFO0
+    #define CAN_RX_FIFO0 ((uint32_t)0x00000000)
+#endif
+#ifndef CAN_RX_FIFO1
+    #define CAN_RX_FIFO1 ((uint32_t)0x00000001)
+#endif
+
+/* CAN filter definitions */
+#ifndef CAN_FILTERMODE_IDMASK
+    #define CAN_FILTERMODE_IDMASK ((uint32_t)0x00000000)
+#endif
+#ifndef CAN_FILTERMODE_IDLIST
+    #define CAN_FILTERMODE_IDLIST ((uint32_t)0x00000001)
+#endif
+
+#ifndef CAN_FILTERSCALE_16BIT
+    #define CAN_FILTERSCALE_16BIT ((uint32_t)0x00000000)
+#endif
+#ifndef CAN_FILTERSCALE_32BIT
+    #define CAN_FILTERSCALE_32BIT ((uint32_t)0x00000001)
+#endif
+
+#ifndef CAN_FILTER_FIFO0
+    #define CAN_FILTER_FIFO0 ((uint32_t)0x00000000)
+#endif
+#ifndef CAN_FILTER_FIFO1
+    #define CAN_FILTER_FIFO1 ((uint32_t)0x00000001)
+#endif
+#ifndef CAN_FILTER_DISABLE
+    #define CAN_FILTER_DISABLE ((uint32_t)0x00000000)
+#endif
+#ifndef CAN_FILTER_ENABLE
+    #define CAN_FILTER_ENABLE ((uint32_t)0x00000001)
+#endif
+
+/* CAN interrupt definitions */
+#ifndef CAN_IT_TX_MAILBOX_EMPTY
+    #define CAN_IT_TX_MAILBOX_EMPTY ((uint32_t)0x00000001)
+#endif
+#ifndef CAN_IT_RX_FIFO0_MSG_PENDING
+    #define CAN_IT_RX_FIFO0_MSG_PENDING ((uint32_t)0x00000002)
+#endif
+#ifndef CAN_IT_RX_FIFO0_FULL
+    #define CAN_IT_RX_FIFO0_FULL ((uint32_t)0x00000004)
+#endif
+#ifndef CAN_IT_RX_FIFO0_OVERRUN
+    #define CAN_IT_RX_FIFO0_OVERRUN ((uint32_t)0x00000008)
+#endif
+#ifndef CAN_IT_RX_FIFO1_MSG_PENDING
+    #define CAN_IT_RX_FIFO1_MSG_PENDING ((uint32_t)0x00000010)
+#endif
+#ifndef CAN_IT_RX_FIFO1_FULL
+    #define CAN_IT_RX_FIFO1_FULL ((uint32_t)0x00000020)
+#endif
+#ifndef CAN_IT_RX_FIFO1_OVERRUN
+    #define CAN_IT_RX_FIFO1_OVERRUN ((uint32_t)0x00000040)
+#endif
+#ifndef CAN_IT_WAKEUP
+    #define CAN_IT_WAKEUP ((uint32_t)0x00010000)
+#endif
+#ifndef CAN_IT_SLEEP_ACK
+    #define CAN_IT_SLEEP_ACK ((uint32_t)0x00020000)
+#endif
+#ifndef CAN_IT_ERROR_WARNING
+    #define CAN_IT_ERROR_WARNING ((uint32_t)0x00000100)
+#endif
+#ifndef CAN_IT_ERROR_PASSIVE
+    #define CAN_IT_ERROR_PASSIVE ((uint32_t)0x00000200)
+#endif
+#ifndef CAN_IT_BUSOFF
+    #define CAN_IT_BUSOFF ((uint32_t)0x00000400)
+#endif
+#ifndef CAN_IT_LAST_ERROR_CODE
+    #define CAN_IT_LAST_ERROR_CODE ((uint32_t)0x00000800)
+#endif
+#ifndef CAN_IT_ERROR
+    #define CAN_IT_ERROR ((uint32_t)0x00008000)
+#endif
+
+/* CAN ID types */
+#ifndef CAN_ID_STD
+    #define CAN_ID_STD ((uint32_t)0x00000000)
+#endif
+#ifndef CAN_ID_EXT
+    #define CAN_ID_EXT ((uint32_t)0x00000004)
+#endif
+
+/* CAN RTR types */
+#ifndef CAN_RTR_DATA
+    #define CAN_RTR_DATA ((uint32_t)0x00000000)
+#endif
+#ifndef CAN_RTR_REMOTE
+    #define CAN_RTR_REMOTE ((uint32_t)0x00000002)
+#endif
+
+/* CAN error codes */
+#ifndef HAL_CAN_ERROR_NONE
+    #define HAL_CAN_ERROR_NONE ((uint32_t)0x00000000)
+#endif
+#ifndef HAL_CAN_ERROR_EWG
+    #define HAL_CAN_ERROR_EWG ((uint32_t)0x00000001)
+#endif
+#ifndef HAL_CAN_ERROR_EPV
+    #define HAL_CAN_ERROR_EPV ((uint32_t)0x00000002)
+#endif
+#ifndef HAL_CAN_ERROR_BOF
+    #define HAL_CAN_ERROR_BOF ((uint32_t)0x00000004)
+#endif
+#ifndef HAL_CAN_ERROR_STF
+    #define HAL_CAN_ERROR_STF ((uint32_t)0x00000008)
+#endif
+#ifndef HAL_CAN_ERROR_FOR
+    #define HAL_CAN_ERROR_FOR ((uint32_t)0x00000010)
+#endif
+#ifndef HAL_CAN_ERROR_ACK
+    #define HAL_CAN_ERROR_ACK ((uint32_t)0x00000020)
+#endif
+#ifndef HAL_CAN_ERROR_BR
+    #define HAL_CAN_ERROR_BR ((uint32_t)0x00000040)
+#endif
+#ifndef HAL_CAN_ERROR_BD
+    #define HAL_CAN_ERROR_BD ((uint32_t)0x00000080)
+#endif
+#ifndef HAL_CAN_ERROR_CRC
+    #define HAL_CAN_ERROR_CRC ((uint32_t)0x00000100)
+#endif
+
+/* CMSIS intrinsics (for IRQ disable/enable) */
+#ifndef __disable_irq
+    #define __disable_irq() ((void)0)
+#endif
+#ifndef __enable_irq
+    #define __enable_irq() ((void)0)
+#endif
+
 /* __IO qualifier stub */
 #ifndef __IO
     #define __IO volatile
+#endif
+
+/* CAN peripheral base addresses (for host testing) */
+#ifndef CAN1
+    #define CAN1 ((CAN_TypeDef*)0x40006400UL)
+#endif
+#ifndef CAN2
+    #define CAN2 ((CAN_TypeDef*)0x40006800UL)
 #endif
 
 /* FunctionalState enum */
@@ -188,6 +376,114 @@ typedef enum
     HAL_TICK_FREQ_1KHZ    = 1U,
     HAL_TICK_FREQ_DEFAULT = HAL_TICK_FREQ_1KHZ
 } HAL_TickFreqTypeDef;
+
+/**
+ * @brief  CAN State structures definition (for testing)
+ */
+#ifndef HAL_CAN_STATE_TYPEDEF
+    #define HAL_CAN_STATE_TYPEDEF
+typedef enum
+{
+    HAL_CAN_STATE_RESET         = 0x00U,
+    HAL_CAN_STATE_READY         = 0x01U,
+    HAL_CAN_STATE_LISTENING     = 0x02U,
+    HAL_CAN_STATE_SLEEP_PENDING = 0x03U,
+    HAL_CAN_STATE_SLEEP_ACTIVE  = 0x04U,
+    HAL_CAN_STATE_ERROR         = 0x05U
+} HAL_CAN_StateTypeDef;
+#endif
+
+/**
+ * @brief  CAN Handle structure (forward declaration for testing)
+ */
+#ifndef CAN_HANDLETYPEDEF
+    #define CAN_HANDLETYPEDEF
+typedef struct __CAN_HandleTypeDef CAN_HandleTypeDef;
+
+/**
+ * @brief  CAN Handle structure (stub for testing)
+ */
+struct __CAN_HandleTypeDef
+{
+    CAN_TypeDef*         Instance;  /* CAN peripheral base address */
+    void*                Init;      /* CAN initialization parameters (opaque) */
+    volatile uint32_t    ErrorCode; /* CAN error code */
+    HAL_CAN_StateTypeDef State;     /* CAN State */
+    HAL_LockTypeDef      Lock;      /* CAN locking object */
+};
+#endif
+
+/**
+ * @brief  CAN TX/RX Header structures (stubs for testing)
+ */
+#ifndef CAN_RXHEADERTYPEDEF
+    #define CAN_RXHEADERTYPEDEF
+typedef struct
+{
+    uint32_t StdId;
+    uint32_t ExtId;
+    uint32_t IDE;
+    uint32_t RTR;
+    uint32_t DLC;
+    uint32_t Timestamp;
+    uint32_t FilterMatchIndex;
+} CAN_RxHeaderTypeDef;
+#endif
+
+#ifndef CAN_TXHEADERTYPEDEF
+    #define CAN_TXHEADERTYPEDEF
+typedef struct
+{
+    uint32_t StdId;
+    uint32_t ExtId;
+    uint32_t IDE;
+    uint32_t RTR;
+    uint32_t DLC;
+    uint32_t TransmitGlobalTime;
+} CAN_TxHeaderTypeDef;
+#endif
+
+/**
+ * @brief  CAN Filter structure (stub for testing)
+ */
+#ifndef CAN_FILTERTYPEDEF
+    #define CAN_FILTERTYPEDEF
+typedef struct
+{
+    uint32_t FilterIdHigh;
+    uint32_t FilterIdLow;
+    uint32_t FilterMaskIdHigh;
+    uint32_t FilterMaskIdLow;
+    uint32_t FilterFIFOAssignment;
+    uint32_t FilterBank;
+    uint32_t FilterMode;
+    uint32_t FilterScale;
+    uint32_t FilterActivation;
+    uint32_t SlaveStartFilterBank;
+} CAN_FilterTypeDef;
+#endif
+
+/**
+ * @brief  CAN Callback ID enumeration
+ */
+typedef enum
+{
+    HAL_CAN_TX_MAILBOX0_COMPLETE_CB_ID = 0x00U,
+    HAL_CAN_TX_MAILBOX1_COMPLETE_CB_ID = 0x01U,
+    HAL_CAN_TX_MAILBOX2_COMPLETE_CB_ID = 0x02U,
+    HAL_CAN_TX_MAILBOX0_ABORT_CB_ID    = 0x03U,
+    HAL_CAN_TX_MAILBOX1_ABORT_CB_ID    = 0x04U,
+    HAL_CAN_TX_MAILBOX2_ABORT_CB_ID    = 0x05U,
+    HAL_CAN_RX_FIFO0_MSG_PENDING_CB_ID = 0x06U,
+    HAL_CAN_RX_FIFO0_FULL_CB_ID        = 0x07U,
+    HAL_CAN_RX_FIFO1_MSG_PENDING_CB_ID = 0x08U,
+    HAL_CAN_RX_FIFO1_FULL_CB_ID        = 0x09U,
+    HAL_CAN_SLEEP_CB_ID                = 0x0AU,
+    HAL_CAN_WAKEUP_FROM_RX_MSG_CB_ID   = 0x0BU,
+    HAL_CAN_ERROR_CB_ID                = 0x0CU,
+    HAL_CAN_MSPINIT_CB_ID              = 0x0DU,
+    HAL_CAN_MSPDEINIT_CB_ID            = 0x0EU
+} HAL_CAN_CallbackIDTypeDef;
 
 /* Exported macros -----------------------------------------------------------*/
 

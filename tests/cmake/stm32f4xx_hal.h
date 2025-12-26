@@ -24,6 +24,9 @@ extern "C"
 /* Include I2C header for I2C types and functions */
 #include "stm32f4xx_hal_i2c.h"
 
+/* Include CAN header for CAN types and functions */
+#include "stm32f4xx_hal_can.h"
+
 /* Tick function declarations (will be mocked) */
 uint32_t HAL_GetTick(void);
 
