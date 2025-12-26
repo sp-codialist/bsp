@@ -4,7 +4,6 @@
  * @note This test file mocks HAL and SWTimer dependencies to test BSP ADC functionality
  */
 
-#include "Mockstm32f4xx_hal.h"
 #include "Mockstm32f4xx_hal_adc.h"
 #include "Mockstm32f4xx_hal_cortex.h"
 #include "bsp_adc.h"
@@ -12,6 +11,17 @@
 #include "unity.h"
 #include <stdbool.h>
 #include <stdint.h>
+
+/* ============================================================================
+ * HAL_GetTick Stub
+ * ========================================================================== */
+
+static uint32_t hal_tick_value = 0;
+
+uint32_t HAL_GetTick(void)
+{
+    return hal_tick_value;
+}
 
 // External declaration for HAL callback implemented in production code
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc);
@@ -231,7 +241,7 @@ void test_BspAdcStart_ValidHandle_Works(void)
     BspAdcChannelHandle_t handle =
         BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_3Cycles, TestAdcCallback1);
 
-    HAL_GetTick_ExpectAndReturn(0);
+    hal_tick_value = 0;
     BspAdcStart(handle, 500);
 
     // Timer should be active (tested via integration)
@@ -257,10 +267,10 @@ void test_BspAdcStart_MultipleChannelsIndependentTimers_Works(void)
         BspAdcAllocateChannel(eBSP_ADC_INSTANCE_2, eBSP_ADC_CHANNEL_5, eBSP_ADC_SampleTime_28Cycles, TestAdcCallback2);
 
     // Start both with different periods
-    HAL_GetTick_ExpectAndReturn(0);
+    hal_tick_value = 0;
     BspAdcStart(handle1, 100);
 
-    HAL_GetTick_ExpectAndReturn(0);
+    hal_tick_value = 0;
     BspAdcStart(handle2, 500);
 }
 
@@ -271,7 +281,7 @@ void test_BspAdcStop_ValidHandle_Works(void)
     BspAdcChannelHandle_t handle =
         BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_3Cycles, TestAdcCallback1);
 
-    HAL_GetTick_ExpectAndReturn(0);
+    hal_tick_value = 0;
     BspAdcStart(handle, 100);
 
     BspAdcStop(handle);
@@ -403,7 +413,7 @@ void test_Integration_SingleChannel_CompleteWorkflow(void)
     BspAdcRegisterErrorCallback(handle, TestErrorCallback);
 
     // Start periodic sampling
-    HAL_GetTick_ExpectAndReturn(0);
+    hal_tick_value = 0;
     BspAdcStart(handle, 1000);
 
     // Simulate ADC conversion complete
@@ -444,13 +454,13 @@ void test_Integration_MultipleChannelsDifferentADCs_IndependentOperation(void)
     TEST_ASSERT_GREATER_OR_EQUAL(0, handle3);
 
     // Start all with different periods
-    HAL_GetTick_ExpectAndReturn(0);
+    hal_tick_value = 0;
     BspAdcStart(handle1, 100);
 
-    HAL_GetTick_ExpectAndReturn(0);
+    hal_tick_value = 0;
     BspAdcStart(handle2, 500);
 
-    HAL_GetTick_ExpectAndReturn(0);
+    hal_tick_value = 0;
     BspAdcStart(handle3, 2000);
 
     // Trigger ADC1 - only callback1 should be invoked
@@ -613,7 +623,7 @@ void test_Coverage_All16Channels_ExerciseTimerCallbacks(void)
     // Start each channel - this sets up their timer callbacks
     for (int i = 0; i < 16; i++)
     {
-        HAL_GetTick_ExpectAndReturn(0);
+        hal_tick_value = 0;
         BspAdcStart(handles[i], 100 + i);
     }
 
@@ -666,11 +676,11 @@ void test_Coverage_MultipleChannelsSameADC_DMATriggersAll(void)
     TEST_ASSERT_GREATER_OR_EQUAL(0, handle3);
 
     // Start all three
-    HAL_GetTick_ExpectAndReturn(0);
+    hal_tick_value = 0;
     BspAdcStart(handle1, 100);
-    HAL_GetTick_ExpectAndReturn(0);
+    hal_tick_value = 0;
     BspAdcStart(handle2, 200);
-    HAL_GetTick_ExpectAndReturn(0);
+    hal_tick_value = 0;
     BspAdcStart(handle3, 300);
 
     // Trigger HAL callback - all three should receive it
@@ -744,7 +754,7 @@ void test_Coverage_InvokeAll16TimerCallbacks_ViaSysTick(void)
         HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
         HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
 
-        HAL_GetTick_ExpectAndReturn(0); // For SWTimerStart
+        hal_tick_value = 0; // For SWTimerStart
 
         handles[i] = BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, (BspAdcChannel_e)i, eBSP_ADC_SampleTime_3Cycles, NULL);
         TEST_ASSERT_GREATER_OR_EQUAL(0, handles[i]);
@@ -755,7 +765,6 @@ void test_Coverage_InvokeAll16TimerCallbacks_ViaSysTick(void)
 
     // Now simulate SysTick callback which processes all timers
     // Set HAL_GetTick to return time after expiration (> 100 ticks)
-    HAL_GetTick_IgnoreAndReturn(150);
 
     // Each timer callback will call HAL_ADC_Start_DMA
     // We need 16 expectations, one for each timer callback
@@ -765,10 +774,11 @@ void test_Coverage_InvokeAll16TimerCallbacks_ViaSysTick(void)
         HAL_ADC_Start_DMA_IgnoreArg_pData();
     }
 
+    // Set time past expiration to trigger all timers
+    hal_tick_value = 150;
+
     // Trigger the SysTick callback which processes all registered timers
     HAL_SYSTICK_Callback();
-
-    HAL_GetTick_StopIgnore();
 }
 
 void test_Coverage_InvalidEnumValues_AllocationFails(void)
@@ -813,7 +823,7 @@ void test_Coverage_TimerCallback_OnFreedChannel_DoesNothing(void)
     // Allocate a channel and start it
     HAL_ADC_ConfigChannel_ExpectAndReturn(&hadc1, NULL, HAL_OK);
     HAL_ADC_ConfigChannel_IgnoreArg_sConfig();
-    HAL_GetTick_ExpectAndReturn(0);
+    hal_tick_value = 0;
 
     BspAdcChannelHandle_t h = BspAdcAllocateChannel(eBSP_ADC_INSTANCE_1, eBSP_ADC_CHANNEL_0, eBSP_ADC_SampleTime_3Cycles, NULL);
     TEST_ASSERT_GREATER_OR_EQUAL(0, h);
@@ -825,10 +835,8 @@ void test_Coverage_TimerCallback_OnFreedChannel_DoesNothing(void)
 
     // Now simulate timer tick - the callback should do nothing because
     // the module is no longer allocated
-    HAL_GetTick_IgnoreAndReturn(150);
     // Note: No HAL_ADC_Start_DMA expectation because callback should skip
     HAL_SYSTICK_Callback();
-    HAL_GetTick_StopIgnore();
 
     TEST_ASSERT_TRUE(true); // Verify no crash
 }
