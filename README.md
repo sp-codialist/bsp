@@ -14,6 +14,7 @@ A modular Board Support Package (BSP) library for STM32F4 microcontrollers with 
 - 📊 **ADC sampling** with DMA and periodic triggers (96% test coverage)
 - 🚗 **CAN communication** with priority queues and event-driven callbacks (96% test coverage)
 - 🌊 **PWM generation** with multi-channel support and frequency control (98% test coverage)
+- 🕐 **RTC (Real-Time Clock)** with UTC time management and Unix timestamp support (100% test coverage)
 - 🧪 **Comprehensive testing** using Unity/CMock frameworks
 - 🔧 **FORCE_STATIC pattern** for testable internal functions
 - 📦 **CMake + CPM** for dependency management
@@ -49,6 +50,7 @@ cmake --build build/bsp-gnuarm14.3
 | **bsp_i2c** | I2C communication (blocking + interrupt) | 93% | [📖 Docs](docs/bsp_i2c.md) |
 | **bsp_can** | CAN with priority queues and callbacks | 96% | [📖 Docs](docs/bsp_can.md) |
 | **bsp_pwm** | PWM generation with multi-channel control | 98% | [📖 Docs](docs/bsp_pwm.md) |
+| **bsp_rtc** | Real-Time Clock with UTC and Unix timestamps | 100% | [📖 Docs](docs/bsp_rtc.md) |
 
 ## Documentation
 
@@ -62,7 +64,8 @@ cmake --build build/bsp-gnuarm14.3
 - 🔌 [BSP I2C](docs/bsp_i2c.md) - I2C communication with blocking and interrupt modes
 - 🚗 [BSP CAN](docs/bsp_can.md) - CAN communication with priority queues and event-driven callbacks
 - 🌊 [BSP PWM](docs/bsp_pwm.md) - PWM generation with frequency and duty cycle control
-- 🔧 [BSP Common](docs/bsp_common.md) - FORCE_STATIC and utilities
+- � [BSP RTC](docs/bsp_rtc.md) - Real-Time Clock with UTC time management and Unix timestamp support
+- �🔧 [BSP Common](docs/bsp_common.md) - FORCE_STATIC and utilities
 
 ## Usage Example
 
@@ -100,7 +103,8 @@ bsp/
 ├── bsp_i2c/             # I2C communication
 ├── bsp_can/             # CAN communication
 ├── bsp_pwm/             # PWM generation
-├── tests/               # Unit tests (338 tests total)
+├── bsp_rtc/             # Real-Time Clock
+├── tests/               # Unit tests (376 tests total)
 ├── docs/                # Documentation
 └── CMakePresets/        # Build configurations
 ```
