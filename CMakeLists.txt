@@ -35,6 +35,7 @@ add_subdirectory (bsp_swtimer)
 add_subdirectory (bsp_led)
 add_subdirectory (bsp_adc)
 add_subdirectory (bsp_spi)
+add_subdirectory (bsp_i2c)
 
 # Include Unity/CMock when testing is enabled
 if(DEFINED BUILD_TESTING)
