@@ -7,6 +7,7 @@
  */
 
 #include "bsp_can.h"
+#include "bsp_compiler_attributes.h"
 #include "stm32f4xx_hal.h"
 #include <stddef.h>
 #include <string.h>
@@ -22,7 +23,7 @@ extern CAN_HandleTypeDef hcan2;
 /**
  * @brief Lookup table mapping instance enum to HAL handles
  */
-static CAN_HandleTypeDef* const s_apHalHandles[BSP_CAN_MAX_INSTANCES] = {
+FORCE_STATIC CAN_HandleTypeDef* const s_apHalHandles[BSP_CAN_MAX_INSTANCES] = {
     &hcan1, /* eBSP_CAN_INSTANCE_1 = 0 */
     &hcan2  /* eBSP_CAN_INSTANCE_2 = 1 */
 };
@@ -35,7 +36,7 @@ static CAN_HandleTypeDef* const s_apHalHandles[BSP_CAN_MAX_INSTANCES] = {
 #define CAN_HW_MAILBOX_COUNT (3u)
 
 /** Capacity per priority level (equal distribution) */
-static const uint8_t CAN_QUEUE_CAPACITY_PER_PRIORITY = (BSP_CAN_TX_QUEUE_DEPTH / BSP_CAN_PRIORITY_LEVELS);
+FORCE_STATIC const uint8_t CAN_QUEUE_CAPACITY_PER_PRIORITY = (BSP_CAN_TX_QUEUE_DEPTH / BSP_CAN_PRIORITY_LEVELS);
 
 /* ============================================================================
  * Private Type Definitions (all private structures in .c file)
@@ -151,7 +152,7 @@ typedef struct
  * ========================================================================== */
 
 /** Module instance array */
-static BspCanModule_t s_aModules[BSP_CAN_MAX_INSTANCES] = {0};
+FORCE_STATIC BspCanModule_t s_aModules[BSP_CAN_MAX_INSTANCES] = {0};
 
 /* ============================================================================
  * Private Helper Functions - TX Queue Management (O(1) operations)
@@ -160,7 +161,7 @@ static BspCanModule_t s_aModules[BSP_CAN_MAX_INSTANCES] = {0};
 /**
  * @brief Initialize TX queue manager.
  */
-static void sTxQueueInit(BspCanTxQueueManager_t* pQueue)
+FORCE_STATIC void sTxQueueInit(BspCanTxQueueManager_t* pQueue)
 {
     memset(pQueue, 0, sizeof(BspCanTxQueueManager_t));
 
@@ -177,7 +178,7 @@ static void sTxQueueInit(BspCanTxQueueManager_t* pQueue)
  * @brief Allocate a TX entry from the pool.
  * @return Pointer to entry, or NULL if pool full.
  */
-static BspCanTxEntry_t* sTxQueueAllocateEntry(BspCanTxQueueManager_t* pQueue)
+FORCE_STATIC BspCanTxEntry_t* sTxQueueAllocateEntry(BspCanTxQueueManager_t* pQueue)
 {
     if (pQueue->byTotalUsed >= BSP_CAN_TX_QUEUE_DEPTH)
     {
@@ -202,7 +203,7 @@ static BspCanTxEntry_t* sTxQueueAllocateEntry(BspCanTxQueueManager_t* pQueue)
  * @brief Enqueue entry into priority level. O(1) operation.
  * @return true on success, false if priority queue full.
  */
-static bool sTxQueueEnqueue(BspCanTxQueueManager_t* pQueue, uint8_t byEntryIndex, uint8_t byPriority)
+FORCE_STATIC bool sTxQueueEnqueue(BspCanTxQueueManager_t* pQueue, uint8_t byEntryIndex, uint8_t byPriority)
 {
     if (byPriority >= BSP_CAN_PRIORITY_LEVELS)
     {
@@ -232,7 +233,7 @@ static bool sTxQueueEnqueue(BspCanTxQueueManager_t* pQueue, uint8_t byEntryIndex
  * @brief Dequeue highest priority entry. O(1) operation using __builtin_ctz.
  * @return Entry index, or 0xFF if queue empty.
  */
-static uint8_t sTxQueueDequeue(BspCanTxQueueManager_t* pQueue)
+FORCE_STATIC uint8_t sTxQueueDequeue(BspCanTxQueueManager_t* pQueue)
 {
     /* Check if any queue has entries */
     if (pQueue->byPriorityBitmap == 0u)
@@ -262,7 +263,7 @@ static uint8_t sTxQueueDequeue(BspCanTxQueueManager_t* pQueue)
 /**
  * @brief Free a TX entry back to pool.
  */
-static void sTxQueueFreeEntry(BspCanTxQueueManager_t* pQueue, uint8_t byEntryIndex)
+FORCE_STATIC void sTxQueueFreeEntry(BspCanTxQueueManager_t* pQueue, uint8_t byEntryIndex)
 {
     if (byEntryIndex < BSP_CAN_TX_QUEUE_DEPTH)
     {
@@ -275,7 +276,7 @@ static void sTxQueueFreeEntry(BspCanTxQueueManager_t* pQueue, uint8_t byEntryInd
  * @brief Search and remove entry from queue by TX ID (for abort).
  * @return true if found and removed, false otherwise.
  */
-static bool sTxQueueRemoveByTxId(BspCanTxQueueManager_t* pQueue, uint32_t uTxId)
+FORCE_STATIC bool sTxQueueRemoveByTxId(BspCanTxQueueManager_t* pQueue, uint32_t uTxId)
 {
     /* Search all priority queues */
     for (uint8_t byPrio = 0u; byPrio < BSP_CAN_PRIORITY_LEVELS; byPrio++)
@@ -327,7 +328,7 @@ static bool sTxQueueRemoveByTxId(BspCanTxQueueManager_t* pQueue, uint32_t uTxId)
 /**
  * @brief Initialize RX buffer.
  */
-static void sRxBufferInit(BspCanRxBuffer_t* pBuffer)
+FORCE_STATIC void sRxBufferInit(BspCanRxBuffer_t* pBuffer)
 {
     memset(pBuffer, 0, sizeof(BspCanRxBuffer_t));
 }
@@ -335,7 +336,7 @@ static void sRxBufferInit(BspCanRxBuffer_t* pBuffer)
 /**
  * @brief Get RX buffer used count.
  */
-static uint8_t sRxBufferGetUsed(const BspCanRxBuffer_t* pBuffer)
+FORCE_STATIC uint8_t sRxBufferGetUsed(const BspCanRxBuffer_t* pBuffer)
 {
     if (pBuffer->byWriteIndex >= pBuffer->byReadIndex)
     {
@@ -354,7 +355,7 @@ static uint8_t sRxBufferGetUsed(const BspCanRxBuffer_t* pBuffer)
 /**
  * @brief Convert mailbox number to index.
  */
-static uint8_t sMailboxToIndex(uint32_t uMailbox)
+FORCE_STATIC uint8_t sMailboxToIndex(uint32_t uMailbox)
 {
     if (uMailbox == CAN_TX_MAILBOX0)
         return 0u;
@@ -369,7 +370,7 @@ static uint8_t sMailboxToIndex(uint32_t uMailbox)
  * @brief Find module by HAL handle.
  * @return Module handle or BSP_CAN_INVALID_HANDLE if not found.
  */
-static BspCanHandle_t sFindModuleByHalHandle(CAN_HandleTypeDef* pHalHandle)
+FORCE_STATIC BspCanHandle_t sFindModuleByHalHandle(CAN_HandleTypeDef* pHalHandle)
 {
     for (uint8_t i = 0u; i < BSP_CAN_MAX_INSTANCES; i++)
     {
@@ -384,7 +385,7 @@ static BspCanHandle_t sFindModuleByHalHandle(CAN_HandleTypeDef* pHalHandle)
 /**
  * @brief Submit next queued message to hardware mailbox.
  */
-static void sSubmitNextTx(BspCanModule_t* pModule)
+FORCE_STATIC void sSubmitNextTx(BspCanModule_t* pModule)
 {
     /* Check if any mailbox is free */
     uint32_t uFreeLevel = HAL_CAN_GetTxMailboxesFreeLevel(pModule->pHalHandle);
@@ -448,7 +449,7 @@ static void sSubmitNextTx(BspCanModule_t* pModule)
 /**
  * @brief Parse HAL RX header into BSP message structure.
  */
-static void sParseRxMessage(const CAN_RxHeaderTypeDef* pRxHeader, const uint8_t* pData, BspCanMessage_t* pMessage)
+FORCE_STATIC void sParseRxMessage(const CAN_RxHeaderTypeDef* pRxHeader, const uint8_t* pData, BspCanMessage_t* pMessage)
 {
     if (pRxHeader->IDE == CAN_ID_STD)
     {
@@ -476,7 +477,7 @@ static void sParseRxMessage(const CAN_RxHeaderTypeDef* pRxHeader, const uint8_t*
  * @brief Validate handle.
  * @return Pointer to module or NULL if invalid.
  */
-static BspCanModule_t* sValidateHandle(BspCanHandle_t handle)
+FORCE_STATIC BspCanModule_t* sValidateHandle(BspCanHandle_t handle)
 {
     if ((handle < 0) || ((uint8_t)handle >= BSP_CAN_MAX_INSTANCES))
     {
