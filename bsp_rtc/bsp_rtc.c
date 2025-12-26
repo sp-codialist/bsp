@@ -8,6 +8,7 @@
 
 #include <string.h>
 
+#include "bsp_compiler_attributes.h"
 #include "stm32f4xx_hal.h"
 
 /* --- External Variables --- */
@@ -30,12 +31,12 @@ extern RTC_HandleTypeDef hrtc;
 /**
  * Initialization flag to track if RTC module is ready.
  */
-static bool s_bInitialized = false;
+FORCE_STATIC bool s_bInitialized = false;
 
 /**
  * Days in each month for a non-leap year.
  */
-static const uint8_t s_abyDaysInMonth[MONTHS_PER_YEAR] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+FORCE_STATIC const uint8_t s_abyDaysInMonth[MONTHS_PER_YEAR] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
 /* --- Local Function Prototypes --- */
 
@@ -44,28 +45,28 @@ static const uint8_t s_abyDaysInMonth[MONTHS_PER_YEAR] = {31, 28, 31, 30, 31, 30
  * @param wYear Full year (e.g., 2024)
  * @return true if leap year, false otherwise
  */
-static bool sIsLeapYear(uint16_t wYear);
+FORCE_STATIC bool sIsLeapYear(uint16_t wYear);
 
 /**
  * @brief Validates date and time values.
  * @param pDateTime Pointer to date/time structure
  * @return true if valid, false otherwise
  */
-static bool sIsValidDateTime(const BspRtcDateTime_t* pDateTime);
+FORCE_STATIC bool sIsValidDateTime(const BspRtcDateTime_t* pDateTime);
 
 /**
  * @brief Converts date/time to Unix timestamp.
  * @param pDateTime Pointer to date/time structure
  * @return Unix timestamp (seconds since epoch)
  */
-static uint32_t sDateTimeToUnix(const BspRtcDateTime_t* pDateTime);
+FORCE_STATIC uint32_t sDateTimeToUnix(const BspRtcDateTime_t* pDateTime);
 
 /**
  * @brief Converts Unix timestamp to date/time.
  * @param uUnixTime Unix timestamp
  * @param pDateTime Pointer to date/time structure to fill
  */
-static void sUnixToDateTime(uint32_t uUnixTime, BspRtcDateTime_t* pDateTime);
+FORCE_STATIC void sUnixToDateTime(uint32_t uUnixTime, BspRtcDateTime_t* pDateTime);
 
 /* --- Public Functions --- */
 
@@ -184,7 +185,7 @@ BspRtcError_e BspRtcGetUnixTime(uint32_t* pUnixTime)
 
 /* --- Local Functions --- */
 
-static bool sIsLeapYear(uint16_t wYear)
+FORCE_STATIC bool sIsLeapYear(uint16_t wYear)
 {
     // Leap year if divisible by 4, not by 100 unless also by 400
     const bool bIsDivisibleBy4      = ((wYear % 4u) == 0u);
@@ -194,7 +195,7 @@ static bool sIsLeapYear(uint16_t wYear)
     return (bIsDivisibleBy4 && (bIsNotDivisibleBy100 || bIsDivisibleBy400));
 }
 
-static bool sIsValidDateTime(const BspRtcDateTime_t* pDateTime)
+FORCE_STATIC bool sIsValidDateTime(const BspRtcDateTime_t* pDateTime)
 {
     // Check year range
     if (pDateTime->wYear < BASE_YEAR)
@@ -229,7 +230,7 @@ static bool sIsValidDateTime(const BspRtcDateTime_t* pDateTime)
     return true;
 }
 
-static uint32_t sDateTimeToUnix(const BspRtcDateTime_t* pDateTime)
+FORCE_STATIC uint32_t sDateTimeToUnix(const BspRtcDateTime_t* pDateTime)
 {
     const uint16_t wYear            = pDateTime->wYear;
     const uint32_t uYearsSinceEpoch = (uint32_t)(wYear - EPOCH_YEAR);
@@ -259,7 +260,7 @@ static uint32_t sDateTimeToUnix(const BspRtcDateTime_t* pDateTime)
     return uSeconds;
 }
 
-static void sUnixToDateTime(uint32_t uUnixTime, BspRtcDateTime_t* pDateTime)
+FORCE_STATIC void sUnixToDateTime(uint32_t uUnixTime, BspRtcDateTime_t* pDateTime)
 {
     // Algorithm to convert Unix timestamp to date/time
     uint32_t uDays          = uUnixTime / (HOURS_PER_DAY * MINUTES_PER_HOUR * SECONDS_PER_MINUTE);
