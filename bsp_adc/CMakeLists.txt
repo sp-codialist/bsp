@@ -18,7 +18,6 @@ target_include_directories (${libName}
 
 target_link_libraries (${libName}
     PUBLIC
-    bsp_common
     bsp_swtimer
     $<$<BOOL:${BUILD_TESTING}>:mock_stm32_hal>
     PRIVATE
