@@ -242,8 +242,14 @@ BspPwmHandle_t BspPwmAllocateChannel(BspPwmTimer_e eTimer, BspPwmChannel_e eChan
                 /* Check for frequency conflict on same timer */
                 if (sBspPwmCheckFrequencyConflict(eTimer, wFrequencyKhz))
                 {
-                    /* Issue warning via callback but continue allocation */
-                    sBspPwmCallErrorCallback((BspPwmHandle_t)i, eBSP_PWM_ERR_FREQUENCY_CONFLICT);
+                    /* Issue warning via callback to all existing channels on this timer */
+                    for (uint8_t j = 0u; j < BSP_PWM_MAX_CHANNELS; j++)
+                    {
+                        if (s_aPwmChannels[j].bAllocated && s_aPwmChannels[j].eTimer == eTimer)
+                        {
+                            sBspPwmCallErrorCallback((BspPwmHandle_t)j, eBSP_PWM_ERR_FREQUENCY_CONFLICT);
+                        }
+                    }
                 }
 
                 /* Allocate the channel */
@@ -351,12 +357,6 @@ BspPwmError_e BspPwmStart(BspPwmHandle_t handle)
 
         const uint32_t uHalChannel = sBspPwmGetHalChannel(pChannel->eChannel);
 
-        if (uHalChannel == 0u)
-        {
-            eError = eBSP_PWM_ERR_INVALID_PARAM;
-            break;
-        }
-
         /* Start PWM generation */
         const HAL_StatusTypeDef tStatus = HAL_TIM_PWM_Start(pChannel->pTimer, uHalChannel);
 
@@ -411,12 +411,6 @@ BspPwmError_e BspPwmStop(BspPwmHandle_t handle)
         }
 
         const uint32_t uHalChannel = sBspPwmGetHalChannel(pChannel->eChannel);
-
-        if (uHalChannel == 0u)
-        {
-            eError = eBSP_PWM_ERR_INVALID_PARAM;
-            break;
-        }
 
         /* Stop PWM generation */
         const HAL_StatusTypeDef tStatus = HAL_TIM_PWM_Stop(pChannel->pTimer, uHalChannel);
