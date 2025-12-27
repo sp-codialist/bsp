@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.13)
 set (libName bsp_can)
 project(${libName} C)
 
-add_library (${libName} STATIC)
+add_library (${libName} OBJECT)
 target_sources (${libName}
     PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/${libName}.c

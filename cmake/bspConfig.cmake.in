@@ -1,0 +1,65 @@
+# BSP Package Configuration File
+# This file is used by find_package(bsp) to locate the bsp library
+
+@PACKAGE_INIT@
+
+# Provide package version information
+set(BSP_VERSION "@PROJECT_VERSION@")
+
+# IMPORTANT: Users must provide the following dependencies:
+# 1. STM32 HAL (cpb package) version >= 1.0.11
+#    - The bsp library requires cpb::cpb target to be available
+#    - Users must call find_package(cpb 1.0.11 REQUIRED) before find_package(bsp)
+#    - See https://github.com/yourusername/stm32cubef4 for HAL package details
+#
+# 2. Configuration headers:
+#    - bsp_can_config.h - CAN peripheral configuration
+#    - Users must provide these headers in their project include path
+
+# Verify that cpb package is available (HAL dependency)
+if(NOT TARGET cpb::cpb)
+    message(FATAL_ERROR
+        "bsp library requires cpb (STM32 HAL) package version >= 1.0.11.\n"
+        "Please call find_package(cpb 1.0.11 REQUIRED) before find_package(bsp).\n"
+        "Download the HAL package from: https://github.com/yourusername/stm32cubef4")
+endif()
+
+# Set include directories variable
+set_and_check(BSP_INCLUDE_DIR_ADC "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@/bsp/adc")
+set_and_check(BSP_INCLUDE_DIR_CAN "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@/bsp/can")
+set_and_check(BSP_INCLUDE_DIR_COMMON "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@/bsp/common")
+set_and_check(BSP_INCLUDE_DIR_GPIO "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@/bsp/gpio")
+set_and_check(BSP_INCLUDE_DIR_I2C "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@/bsp/i2c")
+set_and_check(BSP_INCLUDE_DIR_LED "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@/bsp/led")
+set_and_check(BSP_INCLUDE_DIR_PWM "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@/bsp/pwm")
+set_and_check(BSP_INCLUDE_DIR_RTC "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@/bsp/rtc")
+set_and_check(BSP_INCLUDE_DIR_SPI "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@/bsp/spi")
+set_and_check(BSP_INCLUDE_DIR_SWTIMER "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@/bsp/swtimer")
+
+# Convenience variable: list of all BSP include directories
+set(BSP_INCLUDE_DIRS
+    ${BSP_INCLUDE_DIR_ADC}
+    ${BSP_INCLUDE_DIR_CAN}
+    ${BSP_INCLUDE_DIR_COMMON}
+    ${BSP_INCLUDE_DIR_GPIO}
+    ${BSP_INCLUDE_DIR_I2C}
+    ${BSP_INCLUDE_DIR_LED}
+    ${BSP_INCLUDE_DIR_PWM}
+    ${BSP_INCLUDE_DIR_RTC}
+    ${BSP_INCLUDE_DIR_SPI}
+    ${BSP_INCLUDE_DIR_SWTIMER}
+)
+
+# Set library directory
+set_and_check(BSP_LIBRARY_DIR "@PACKAGE_CMAKE_INSTALL_LIBDIR@")
+
+# Include the targets file to define bsp::bsp target
+include("${CMAKE_CURRENT_LIST_DIR}/bspTargets.cmake")
+
+# Convenience variable: bsp library target
+set(BSP_LIBRARIES bsp::bsp)
+
+# Provide standard variables for compatibility
+set(BSP_FOUND TRUE)
+
+check_required_components(bsp)

@@ -1,0 +1,30 @@
+# BSP Library Package Root CMakeLists.txt
+# This file is installed at the root of the BSP package tarball
+# It enables easy consumption via CPM or FetchContent
+
+cmake_minimum_required(VERSION 3.13)
+
+# Set version from package
+set(BSP_VERSION "@BSP_PACKAGE_VERSION@" CACHE STRING "BSP library version" FORCE)
+
+# Configure CMake to find the bsp package
+set(CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/lib/cmake" CACHE PATH "CMake prefix path for finding bsp package" FORCE)
+
+# Find the bsp package - this loads bspConfig.cmake
+find_package(bsp REQUIRED CONFIG)
+
+# Make the bsp::bsp target globally available
+# This allows parent projects using CPM/FetchContent to link against bsp::bsp
+if(TARGET bsp::bsp)
+    set_target_properties(bsp::bsp PROPERTIES IMPORTED_GLOBAL TRUE)
+endif()
+
+# Provide convenience variables for legacy projects
+# BSP_INCLUDE_DIRS: List of all BSP include directories
+# BSP_LIBRARIES: The bsp library target (bsp::bsp)
+set(BSP_INCLUDE_DIRS "${BSP_INCLUDE_DIRS}" CACHE STRING "BSP include directories" FORCE)
+set(BSP_LIBRARIES "${BSP_LIBRARIES}" CACHE STRING "BSP library target" FORCE)
+
+message(STATUS "BSP library package loaded: version ${BSP_VERSION}")
+message(STATUS "  BSP_INCLUDE_DIRS: ${BSP_INCLUDE_DIRS}")
+message(STATUS "  BSP_LIBRARIES: ${BSP_LIBRARIES}")
