@@ -60,5 +60,3 @@ Thumbs.db
 
 # ignore local user presets
 CMakeUserPresets.json
-# ignore gpio struct folder
-bsp_gpio/gpio_structs/

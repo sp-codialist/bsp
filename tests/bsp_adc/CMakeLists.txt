@@ -54,6 +54,7 @@ target_include_directories(${targetName}
 target_link_libraries(${targetName}
     PUBLIC
         bsp_adc       # Links against bsp_adc library which includes all dependencies
+        bsp_swtimer   # Explicit link needed for OBJECT library dependencies
 )
 
 # Compiler options for coverage and debugging

@@ -59,7 +59,7 @@ jobs:
         cpack -G "TGZ" -C $BUILD_TYPE
 
         # List generated packages
-        ls -la *.tar.gz
+        ls -la ./*.tar.gz
 
     - name: Generate Coverage Report
       if: matrix.preset == 'bsp-test-host'
