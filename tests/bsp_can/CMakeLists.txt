@@ -53,6 +53,9 @@ target_include_directories(${targetName}
 target_link_libraries(${targetName}
     PUBLIC
         bsp_can       # Links against bsp_can library which includes all dependencies
+        bsp_led       # Explicit link needed for OBJECT library dependencies
+        bsp_gpio      # Explicit link needed for OBJECT library dependencies (via bsp_led)
+        bsp_swtimer   # Explicit link needed for OBJECT library dependencies (via bsp_led)
 )
 
 # Compiler options for coverage and debugging

@@ -55,6 +55,8 @@ target_include_directories(${targetName}
 target_link_libraries(${targetName}
     PUBLIC
         bsp_led       # Links against bsp_led library which includes all dependencies
+        bsp_gpio      # Explicit link needed for OBJECT library dependencies
+        bsp_swtimer   # Explicit link needed for OBJECT library dependencies
 )
 
 # Compiler options for coverage and debugging
