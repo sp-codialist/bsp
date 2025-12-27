@@ -3,21 +3,14 @@ cmake_minimum_required(VERSION 3.13)
 set (libName bsp_gpio)
 project(${libName} C)
 
-# add list of gpio pins to be used for this bsp
-set (MAIN_HEADER ${cpu_precompiled_hal_SOURCE_DIR}/include/cpb/main.h CACHE PATH "Path to main.h file")
-set (GPIO_STRUCT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/gpio_structs CACHE PATH "Path to GPIO structs output directory")
-include (${cmake_scripts_SOURCE_DIR}/silicon/STMicroelectronics/stm32cubexx.gpio-struct.cmake)
-
 add_library (${libName} STATIC)
 target_sources (${libName}
     PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/${libName}.c
-    $<$<NOT:$<BOOL:${BUILD_TESTING}>>:${CMAKE_CURRENT_SOURCE_DIR}/gpio_structs/gpio_struct.c>
 )
 target_include_directories (${libName}
     PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/gpio_structs
     PRIVATE
     $<$<NOT:$<BOOL:${BUILD_TESTING}>>:${CPB_INCLUDE_DIRS}>
 )
