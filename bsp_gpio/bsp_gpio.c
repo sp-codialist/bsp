@@ -6,7 +6,7 @@
 #include "bsp_compiler_attributes.h"
 
 #include "bsp_gpio.h"
-#include "gpio_structs/gpio_struct.h"
+#include "gpio_struct.h"
 #include "stm32f4xx_hal_cortex.h"
 #include "stm32f4xx_hal_gpio.h"
 #include "stm32f4xx_ll_gpio.h"
