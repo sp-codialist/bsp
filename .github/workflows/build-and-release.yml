@@ -40,7 +40,7 @@ jobs:
 
     - name: Configure CMake
       run: |
-        cmake --preset ${{ matrix.preset }}
+        cmake --preset ${{ matrix.preset }} -DGITHUB_BRANCH_bsp=${{ github.ref_name }}
 
     - name: Build
       run: |
@@ -50,6 +50,16 @@ jobs:
       if: matrix.preset == 'bsp-test-host'
       run: |
         cmake --build --preset ${{ matrix.preset }} --target test
+
+    - name: Package with CPack
+      if: matrix.preset != 'bsp-test-host'
+      working-directory: build/${{ matrix.preset }}
+      run: |
+        # Create packages using CPack
+        cpack -G "TGZ" -C $BUILD_TYPE
+
+        # List generated packages
+        ls -la *.tar.gz
 
     - name: Generate Coverage Report
       if: matrix.preset == 'bsp-test-host'
@@ -230,22 +240,30 @@ jobs:
 
         ## What's Included
 
-        This release contains pre-built Board Support Package (BSP) static library:
+        This release contains pre-built unified Board Support Package (BSP) static library for STM32F4 microcontrollers:
 
-        - **libbsp.a**: BSP library with board abstraction layer
-        - **Multiple Toolchains**: Built with ARM GCC 14.3 and ARM Compiler for Embedded 21.1
+        - **libbsp.a**: Unified BSP library combining all peripheral abstraction modules
+        - **bsp::bsp target**: Single CMake target providing all BSP functionality
+        - **Modular Headers**: Organized by peripheral type for clean includes
         - **Debug Build with Symbols**: Compiled with debug information
+        - **Multiple Toolchains**: Built with ARM GCC 14.3 and ARM Compiler for Embedded 21.1
 
         Each archive contains:
-        - BSP static library (\`libbsp.a\`)
-        - Complete BSP headers for Common modules:
-          - BspAdc, BspAtFlash, BspButton, BspCan
-          - BspEeprom, BspFuelGauge, BspGpio, BspI2c
-          - BspLed, BspLedBar, BspPwm, BspRtc
-          - BspSpi, BspWatchdog, CmdProc, SelfTest
-          - BringUp utilities
-        - CMake configuration files for easy integration
-        - License information
+        - Unified static library (\`libbsp.a\`) with all BSP modules
+        - Modular header structure:
+          - **bsp/adc/** - ADC peripheral abstraction
+          - **bsp/can/** - CAN bus communication
+          - **bsp/common/** - Common compiler attributes and utilities
+          - **bsp/gpio/** - GPIO pin control
+          - **bsp/i2c/** - I2C communication
+          - **bsp/led/** - LED control abstraction
+          - **bsp/pwm/** - PWM output control
+          - **bsp/rtc/** - Real-time clock
+          - **bsp/spi/** - SPI communication
+          - **bsp/swtimer/** - Software timer utilities
+        - CMake configuration files (\`bspConfig.cmake\`, \`bspTargets.cmake\`)
+        - Root CMakeLists.txt for CPM/FetchContent integration
+        - Complete documentation
 
         ## Build Configuration
 
@@ -253,18 +271,43 @@ jobs:
         - **Toolchains**:
           - ARM GCC 14.3 (arm-none-eabi-gcc)
           - ARM Compiler for Embedded 21.1 (armclang)
-        - **CMake Version**: 3.28+
-        - **Dependencies**: Requires CPB HAL library (libcpb.a)
+        - **CMake Version**: 3.13+
+        - **Dependencies**:
+          - Requires STM32 HAL (cpb package) >= 1.0.11
+          - Users must provide \`bsp_can_config.h\` configuration header
         - **Target**: STM32F4 series (Cortex-M4F)
 
         ## Quick Start
 
+        ### Using CPM (Recommended)
         \`\`\`cmake
-        find_package(bsp REQUIRED)
-        target_link_libraries(your_target PRIVATE bsp::common)
+        # Add to your CMakeLists.txt
+        CPMAddPackage(
+          NAME bsp
+          URL "path/to/bsp-${{ steps.get_version.outputs.version }}-<toolchain>.tar.gz"
+          URL_HASH SHA256=<hash>
+        )
+
+        target_link_libraries(your_target PRIVATE bsp::bsp)
         \`\`\`
 
-        See USAGE.md in the package for detailed integration instructions.
+        ### Using find_package
+        \`\`\`cmake
+        # Ensure cpb (HAL) is found first
+        find_package(cpb 1.0.11 REQUIRED)
+
+        # Find BSP package
+        find_package(bsp REQUIRED)
+
+        # Link against the library
+        target_link_libraries(your_target PRIVATE bsp::bsp)
+        \`\`\`
+
+        The package provides convenience variables:
+        - \`BSP_INCLUDE_DIRS\` - List of all module include paths
+        - \`BSP_LIBRARIES\` - The bsp::bsp target
+
+        See PACKAGING.md in the source repository for detailed integration instructions.
 
         ## SHA256 Checksums
 
